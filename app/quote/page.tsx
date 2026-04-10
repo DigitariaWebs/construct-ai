@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import AppLayout from '@/components/AppLayout'
 import Modal from '@/components/Modal'
 import Toast from '@/components/Toast'
 import Animate from '@/components/Animate'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { generateQuotePdf } from '@/lib/generateQuotePdf'
+import { SUPPLIERS, SESSION_KEY, type Supplier } from '@/lib/suppliers'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,19 +22,6 @@ type Row = {
   unitNum: number
 }
 
-type Supplier = {
-  id: string
-  name: string
-  sub: string
-  initials: string
-  tier: string
-  tierColor: string
-  rating: number
-  deliveryDays: number
-  // one price per material, matching INITIAL_ROWS order
-  prices: [number, number, number, number, number]
-}
-
 // ─── Material definitions (static metadata only, no prices) ──────────────────
 
 const MAT_META = [
@@ -42,67 +30,6 @@ const MAT_META = [
   { icon: 'texture',      iconBg: 'bg-tertiary/10',  iconColor: 'text-tertiary',  name: 'Glass Paneling',               sub: 'Double Glazed Reflective',   qtyNum: 1200, qtyUnit: 'sqft' },
   { icon: 'bolt',         iconBg: 'bg-blue-500/10',  iconColor: 'text-blue-400',  name: 'Electrical Wiring & Conduit',  sub: 'EMT — 14 AWG + 12 AWG',     qtyNum: 3200, qtyUnit: 'lft'  },
   { icon: 'water_drop',   iconBg: 'bg-cyan-500/10',  iconColor: 'text-cyan-400',  name: 'Plumbing Fixtures & Pipe',     sub: 'PEX-A + Commercial Grade',   qtyNum: 85,   qtyUnit: 'Sets' },
-]
-
-// ─── Suppliers (each has their own price list) ────────────────────────────────
-//   prices index: [Steel, Concrete, Glass, Electrical, Plumbing]
-
-const SUPPLIERS: Supplier[] = [
-  {
-    id: 'auto',
-    name: 'AI Optimized',
-    sub: 'Best blended market rate',
-    initials: 'AI',
-    tier: 'AUTO',
-    tierColor: 'text-primary bg-primary/10',
-    rating: 4.9,
-    deliveryDays: 3,
-    prices: [1240, 115, 45.00, 8.40, 1010],
-  },
-  {
-    id: 'atlas',
-    name: 'Atlas Steel',
-    sub: 'Structural specialist',
-    initials: 'AS',
-    tier: 'TIER 1',
-    tierColor: 'text-emerald-400 bg-emerald-400/10',
-    rating: 4.8,
-    deliveryDays: 2,
-    prices: [1185, 120, 46.00, 8.75, 1040],
-  },
-  {
-    id: 'cdo',
-    name: 'CDO Comptoir',
-    sub: 'Full-range distributor',
-    initials: 'CDO',
-    tier: 'TIER 1',
-    tierColor: 'text-emerald-400 bg-emerald-400/10',
-    rating: 4.7,
-    deliveryDays: 4,
-    prices: [1260, 109, 43.50, 8.10, 975],
-  },
-  {
-    id: 'corebuild',
-    name: 'CoreBuild',
-    sub: 'Concrete & civil works',
-    initials: 'CB',
-    tier: 'TIER 2',
-    tierColor: 'text-secondary bg-secondary/10',
-    rating: 4.5,
-    deliveryDays: 5,
-    prices: [1295, 96, 47.50, 9.05, 955],
-  },
-  {
-    id: 'richardson',
-    name: 'Richardson',
-    sub: 'MEP & electrical',
-    initials: 'RC',
-    tier: 'TIER 1',
-    tierColor: 'text-emerald-400 bg-emerald-400/10',
-    rating: 4.6,
-    deliveryDays: 3,
-    prices: [1255, 117, 44.00, 7.65, 998],
-  },
 ]
 
 // ─── Constants & helpers ─────────────────────────────────────────────────────
@@ -134,6 +61,20 @@ export default function QuotePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [rows, setRows]           = useState<Row[]>(buildRows(SUPPLIERS[0].prices))
   const [draft, setDraft]         = useState<Row[]>(buildRows(SUPPLIERS[0].prices))
+
+  // ── Apply supplier chosen in UploadModal (once on mount) ─────────────────
+  useEffect(() => {
+    const saved = sessionStorage.getItem(SESSION_KEY)
+    if (saved && saved !== 'auto') {
+      const supplier = SUPPLIERS.find(s => s.id === saved)
+      if (supplier) {
+        const newRows = buildRows(supplier.prices)
+        setRows(newRows)
+        setDraft(newRows)
+        setSelectedSupplierId(saved)
+      }
+    }
+  }, [])
 
   // ── Totals ────────────────────────────────────────────────────────────────
 
