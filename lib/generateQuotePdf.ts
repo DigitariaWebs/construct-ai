@@ -1,14 +1,14 @@
 import jsPDF from 'jspdf'
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Shared row type (matches QuotePage) ──────────────────────────────────────
 
-const materials = [
-  { name: 'Steel Beams (Grade 50)',      sub: 'Structural I-Beam — 20ft',        qty: '42 Units',    unit: '$1,240.00',  total: '$52,080.00',  pct: 28 },
-  { name: 'Concrete Mix (High Strength)', sub: 'M40 Grade — Ready Mix',           qty: '250 m³',      unit: '$115.00',    total: '$28,750.00',  pct: 16 },
-  { name: 'Glass Paneling',               sub: 'Double Glazed Reflective',         qty: '1,200 sqft',  unit: '$45.00',     total: '$54,000.00',  pct: 29 },
-  { name: 'Electrical Wiring & Conduit',  sub: 'EMT — 14 AWG + 12 AWG',           qty: '3,200 lft',   unit: '$8.40',      total: '$26,880.00',  pct: 14 },
-  { name: 'Plumbing Fixtures & Pipe',     sub: 'PEX-A + Commercial Grade',         qty: '85 Sets',     unit: '$1,010.00',  total: '$85,850.00',  pct: 46 },
-]
+export type PdfRow = {
+  name: string
+  sub: string
+  qtyNum: number
+  qtyUnit: string
+  unitNum: number
+}
 
 const labor = [
   { label: 'Structural Engineers', detail: '120 hrs @ $150/hr',  amount: '$18,000.00' },
@@ -53,7 +53,17 @@ function setTextColor(doc: jsPDF, rgb: [number,number,number]) {
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export function generateQuotePdf() {
+export function generateQuotePdf(rows: PdfRow[]) {
+  const maxTotal = Math.max(...rows.map(r => r.qtyNum * r.unitNum), 1)
+  const materialSubtotal = rows.reduce((s, r) => s + r.qtyNum * r.unitNum, 0)
+  const FIXED_LABOR = 67_800
+  const FIXED_LOGISTICS = 15_600
+  const subtotal = materialSubtotal + FIXED_LABOR + FIXED_LOGISTICS
+  const tax = subtotal * 0.06
+  const grand = subtotal + tax
+
+  const pdfFmt = (n: number) =>
+    '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const doc    = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' })
   const W      = doc.internal.pageSize.getWidth()   // 595
   const margin = 40
@@ -158,8 +168,10 @@ export function generateQuotePdf() {
   y += 20
 
   // Rows
-  materials.forEach((m, i) => {
-    const rowH = 30
+  rows.forEach((m, i) => {
+    const rowTotal = m.qtyNum * m.unitNum
+    const pct      = Math.round((rowTotal / maxTotal) * 100)
+    const rowH     = 30
     if (i % 2 === 1) {
       setFill(doc, C.navyLight)
       doc.rect(margin, y, inner, rowH, 'F')
@@ -178,23 +190,23 @@ export function generateQuotePdf() {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     setTextColor(doc, C.muted)
-    doc.text(m.qty, cols.qty, y + 17)
+    doc.text(`${m.qtyNum.toLocaleString('en-US')} ${m.qtyUnit}`, cols.qty, y + 17)
     // Unit
-    doc.text(m.unit, cols.unit, y + 17)
+    doc.text(pdfFmt(m.unitNum), cols.unit, y + 17)
     // Share bar
     const barW = 36
     setFill(doc, C.border)
     doc.rect(cols.share, y + 12, barW, 4, 'F')
     setFill(doc, C.blue)
-    doc.rect(cols.share, y + 12, barW * m.pct / 100, 4, 'F')
+    doc.rect(cols.share, y + 12, barW * pct / 100, 4, 'F')
     doc.setFontSize(7)
     setTextColor(doc, C.muted)
-    doc.text(`${m.pct}%`, cols.share + barW + 3, y + 17)
+    doc.text(`${pct}%`, cols.share + barW + 3, y + 17)
     // Total
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(8.5)
     setTextColor(doc, C.blueLight)
-    doc.text(m.total, cols.total, y + 17, { align: 'right' })
+    doc.text(pdfFmt(rowTotal), cols.total, y + 17, { align: 'right' })
 
     y += rowH
   })
@@ -291,14 +303,14 @@ export function generateQuotePdf() {
   setFill(doc, C.blue)
   doc.rect(margin, y, 3, 108, 'F')
 
-  const totals = [
-    ['Materials Subtotal', '$247,560.00'],
-    ['Labor',              '$67,800.00'],
-    ['Logistics',          '$15,600.00'],
-    ['Tax (6%)',           '$19,857.60'],
+  const pdfTotals = [
+    ['Materials Subtotal', pdfFmt(materialSubtotal)],
+    ['Labor',              pdfFmt(FIXED_LABOR)],
+    ['Logistics',          pdfFmt(FIXED_LOGISTICS)],
+    ['Tax (6%)',           pdfFmt(tax)],
   ]
   let ty = y + 18
-  totals.forEach(([label, val]) => {
+  pdfTotals.forEach(([label, val]) => {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
     setTextColor(doc, C.muted)
@@ -306,7 +318,6 @@ export function generateQuotePdf() {
     doc.setFont('helvetica', 'bold')
     setTextColor(doc, C.white)
     doc.text(val, W - margin - 14, ty, { align: 'right' })
-    // divider
     setDraw(doc, C.border)
     doc.setLineWidth(0.5)
     doc.line(margin + 14, ty + 5, W - margin - 14, ty + 5)
@@ -319,7 +330,7 @@ export function generateQuotePdf() {
   setTextColor(doc, C.white)
   doc.text('TOTAL PROJECT VALUATION', margin + 14, ty + 2)
   setTextColor(doc, C.blueLight)
-  doc.text('$247,510.00', W - margin - 14, ty + 2, { align: 'right' })
+  doc.text(pdfFmt(grand), W - margin - 14, ty + 2, { align: 'right' })
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7.5)
