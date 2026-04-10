@@ -117,7 +117,7 @@ export default function LandingPage() {
                   <div className="w-full h-2/3 mt-6 relative">
                     <img
                       src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvQGMi6iUa6tpBsfR0otxsJL7RAl7Va4I1dgvGLO1dyzrXpSRR4s2Wk4C9_o2bBg3Utp1DBDMFcojAimFyLw8QHp2XvXugHTRsdrCdo8cIa8CjJXF8yTXa6JTlUa8-EeTJlpor80uPM6-2AmnNMXpoBr9h8X0_k2aO43JQGwS_FCqjctUZeyAaVivZzAUktUO6ogCGUYCkaREutd95Uw4Ac3caE4X3Ch352ltxbc80X-zimiML1uftGnlOhsxvqFZ6pXehr-3AbXo"
-                      alt="AI architectural blueprint with glowing blue vector lines"
+                      alt="Blueprint with blue vector lines"
                       className="w-full h-full object-cover rounded-xl border border-outline-variant/30 opacity-60"
                     />
                     {/* Animated scan line */}
@@ -179,13 +179,13 @@ export default function LandingPage() {
                 </div>
                 <div className="flex gap-3 flex-wrap">
                   <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                    AUTOCAD SUPPORT
+                    CAD FILES
                   </span>
                   <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                    REVIT COMPATIBLE
+                    REVIT FILES
                   </span>
                   <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                    PDF NATIVE
+                    PDF FILES
                   </span>
                 </div>
               </div>

@@ -18,7 +18,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Digital Foreman | CONSTRUCT.AI',
   description:
-    'Turn construction PDFs into quotes in seconds. AI-powered takeoffs, live market pricing, and logistics forecasting.',
+    'Turn construction PDFs into quotes in seconds. Smart tools, live prices, and clear delivery timing.',
 }
 
 export default function RootLayout({

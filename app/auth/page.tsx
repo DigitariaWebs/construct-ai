@@ -56,7 +56,7 @@ export default function AuthPage() {
             <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-surface-container/80 backdrop-blur-md border border-outline-variant/30 mb-8 shadow-sm">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
               <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-emerald-400">
-                SYSTEM SECURE
+                SECURE
               </span>
             </div>
           </Animate>
@@ -81,8 +81,8 @@ export default function AuthPage() {
                   <span className="material-symbols-outlined text-primary text-3xl">security</span>
                 </div>
                 <div>
-                  <h4 className="text-base font-bold text-on-surface mb-1 uppercase tracking-wider font-headline">Enterprise Grade</h4>
-                  <p className="text-sm text-on-surface-variant leading-relaxed">End-to-end encryption with SSO capability. Your blueprints remain strictly confidential.</p>
+                  <h4 className="text-base font-bold text-on-surface mb-1 uppercase tracking-wider font-headline">Strong Security</h4>
+                  <p className="text-sm text-on-surface-variant leading-relaxed">We protect your plans and keep them private.</p>
                 </div>
               </div>
             </div>
@@ -237,7 +237,7 @@ export default function AuthPage() {
                     {isSubmitting ? (
                       <>
                         <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
-                        {mode === 'login' ? 'AUTHENTICATING...' : 'CREATING ACCOUNT...'}
+                        {mode === 'login' ? 'SIGNING IN...' : 'CREATING ACCOUNT...'}
                       </>
                     ) : (
                       <>

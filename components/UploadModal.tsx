@@ -88,11 +88,11 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
               <div className={`h-px w-6 transition-colors ${step === 2 ? 'bg-primary' : 'bg-outline-variant/30'}`} />
               <div className="flex items-center gap-1.5">
                 <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${step === 2 ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant'}`}>2</div>
-                <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${step === 2 ? 'text-primary' : 'text-on-surface-variant'}`}>Select Supplier</span>
+                <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${step === 2 ? 'text-primary' : 'text-on-surface-variant'}`}>Choose Supplier</span>
               </div>
             </div>
             <h2 className="font-headline font-black text-xl tracking-tighter text-white">
-              {step === 1 ? t.projects.dragDrop : 'Choose Your Supplier'}
+              {step === 1 ? t.projects.dragDrop : 'Choose a Supplier'}
             </h2>
           </div>
           <button
@@ -253,7 +253,7 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>rocket_launch</span>
-                    Launch Analysis
+                    Start Analysis
                   </>
                 )}
               </button>

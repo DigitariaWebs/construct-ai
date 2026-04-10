@@ -12,9 +12,9 @@ import { useLanguage } from '@/contexts/LanguageContext'
 
 const metrics = [
   {
-    label: 'Processing Power',
-    value: '98.2',
-    unit: 'TFLOPS',
+    label: 'System Speed',
+    value: 'Fast',
+    unit: '',
     icon: 'memory',
     bar: 85,
     badge: 'LIVE',
@@ -23,25 +23,25 @@ const metrics = [
   {
     label: 'Active Projects',
     value: '14',
-    unit: 'Nodes',
+    unit: 'Sites',
     icon: 'foundation',
-    sub: '3 pending architectural reviews',
+    sub: '3 reviews waiting',
     color: 'text-primary',
   },
   {
-    label: 'Savings Identified',
-    value: '$42.8k',
+    label: 'Money Saved',
+    value: '$42k',
     unit: '',
     icon: 'payments',
-    trend: '12% INCREASE VS LAST CYCLE',
+    trend: '12% more than last time',
     color: 'text-tertiary',
   },
 ]
 
 const logs = [
-  { time: '09:42 AM', text: 'Neural Engine updated site scan for', highlight: 'Station 7',  dot: 'bg-primary-container shadow-[0_0_8px_rgba(46,91,255,0.8)]' },
-  { time: '09:15 AM', text: 'Optimization conflict resolved in',   highlight: 'HVAC Layout', dot: 'bg-tertiary shadow-[0_0_8px_rgba(255,181,155,0.8)]',            highlightColor: 'text-tertiary' },
-  { time: '08:50 AM', text: 'Daily structural integrity report generated', highlight: '',   dot: 'bg-primary-container opacity-50' },
+  { time: '09:42 AM', text: 'System scan updated for', highlight: 'Station 7',  dot: 'bg-primary-container shadow-[0_0_8px_rgba(46,91,255,0.8)]' },
+  { time: '09:15 AM', text: 'Issue fixed in',           highlight: 'Cooling layout', dot: 'bg-tertiary shadow-[0_0_8px_rgba(255,181,155,0.8)]',            highlightColor: 'text-tertiary' },
+  { time: '08:50 AM', text: 'Daily structure report created', highlight: '',   dot: 'bg-primary-container opacity-50' },
   { time: '08:22 AM', text: 'Quote PRJ-992-DELTA approved by',     highlight: 'A. Vance',   dot: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]',          highlightColor: 'text-emerald-400' },
 ]
 
@@ -164,7 +164,7 @@ export default function DashboardPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest to-transparent opacity-70 z-10 pointer-events-none" />
             <img
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiCwLYs6qCWWwoGJTQO_qErOUa35Um9F-wmhf_arPouMPIUrs4YIGaCsKz5_BKMq6Hc8QTfteA_NG0cORZfC8Ca9LY3om2FILrybUOp_7kws7KrhDjFMnY0Raohjyv2Fhld5YZSLvlrvYcmcc0UpxZ8SwhSXKN4Ey7ta08tH0AfJjB5Gb80u8V-Qah2HSOkzR7WK2JCKX24AEdbxncuzP2uRCdo9Nn_ijJ2UifrTZ12MeJoKcP1TTfqkPfiA09h-wxLO_PG2EEoYs"
-              alt="Active architectural blueprint"
+              alt="Active blueprint"
               className="w-full h-[400px] md:h-[480px] object-cover transition-transform duration-1000 group-hover:scale-105"
             />
             <div className="absolute bottom-0 left-0 right-0 p-8 z-20">

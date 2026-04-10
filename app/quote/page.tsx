@@ -25,11 +25,11 @@ type Row = {
 // ─── Material definitions (static metadata only, no prices) ──────────────────
 
 const MAT_META = [
-  { icon: 'architecture', iconBg: 'bg-primary/10',   iconColor: 'text-primary',   name: 'Steel Beams (Grade 50)',       sub: 'Structural I-Beam — 20ft',  qtyNum: 42,   qtyUnit: 'Units' },
-  { icon: 'layers',       iconBg: 'bg-secondary/10', iconColor: 'text-secondary', name: 'Concrete Mix (High Strength)', sub: 'M40 Grade — Ready Mix',      qtyNum: 250,  qtyUnit: 'm³'   },
-  { icon: 'texture',      iconBg: 'bg-tertiary/10',  iconColor: 'text-tertiary',  name: 'Glass Paneling',               sub: 'Double Glazed Reflective',   qtyNum: 1200, qtyUnit: 'sqft' },
-  { icon: 'bolt',         iconBg: 'bg-blue-500/10',  iconColor: 'text-blue-400',  name: 'Electrical Wiring & Conduit',  sub: 'EMT — 14 AWG + 12 AWG',     qtyNum: 3200, qtyUnit: 'lft'  },
-  { icon: 'water_drop',   iconBg: 'bg-cyan-500/10',  iconColor: 'text-cyan-400',  name: 'Plumbing Fixtures & Pipe',     sub: 'PEX-A + Commercial Grade',   qtyNum: 85,   qtyUnit: 'Sets' },
+  { icon: 'architecture', iconBg: 'bg-primary/10',   iconColor: 'text-primary',   name: 'Steel Beams',      sub: 'Main beams — 20 ft',  qtyNum: 42,   qtyUnit: 'Units' },
+  { icon: 'layers',       iconBg: 'bg-secondary/10', iconColor: 'text-secondary', name: 'Concrete Mix',    sub: 'Ready mix',            qtyNum: 250,  qtyUnit: 'm³'   },
+  { icon: 'texture',      iconBg: 'bg-tertiary/10',  iconColor: 'text-tertiary',  name: 'Glass Panels',    sub: 'Double glazed',        qtyNum: 1200, qtyUnit: 'sqft' },
+  { icon: 'bolt',         iconBg: 'bg-blue-500/10',  iconColor: 'text-blue-400',  name: 'Electrical Wire', sub: 'Basic wiring',          qtyNum: 3200, qtyUnit: 'ft'   },
+  { icon: 'water_drop',   iconBg: 'bg-cyan-500/10',  iconColor: 'text-cyan-400',  name: 'Plumbing Parts',  sub: 'Pipes and fixtures',    qtyNum: 85,   qtyUnit: 'Sets' },
 ]
 
 // ─── Constants & helpers ─────────────────────────────────────────────────────
@@ -109,7 +109,7 @@ export default function QuotePage() {
     setRows(newRows)
     setDraft(newRows.map(r => ({ ...r })))
     setSelectedSupplierId(s.id)
-    setToast({ message: `${s.name} pricing applied — quote updated.`, type: 'success' })
+    setToast({ message: `${s.name} pricing applied.`, type: 'success' })
   }
 
   const startEdit = () => {
@@ -125,7 +125,7 @@ export default function QuotePage() {
   const saveEdit = () => {
     setRows(draft.map(r => ({ ...r })))
     setIsEditing(false)
-    setToast({ message: 'Quote updated successfully.', type: 'success' })
+    setToast({ message: 'Quote updated.', type: 'success' })
   }
 
   const updateDraft = (idx: number, field: 'qtyNum' | 'unitNum', raw: string) => {
@@ -140,7 +140,7 @@ export default function QuotePage() {
         generateQuotePdf(rows)
         setToast({ message: t.quote.toastDownloaded, type: 'success' })
       } catch {
-        setToast({ message: 'PDF generation failed. Please try again.', type: 'error' })
+        setToast({ message: 'PDF failed. Please try again.', type: 'error' })
       } finally {
         setDownloading(false)
       }
@@ -165,13 +165,13 @@ export default function QuotePage() {
         {isEditing && (
           <div className="mb-6 flex items-center gap-3 px-5 py-3 rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-400">
             <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>edit_note</span>
-            <span className="text-xs font-bold uppercase tracking-widest">Edit Mode — changes are not saved yet</span>
+            <span className="text-xs font-bold uppercase tracking-widest">Edit mode — not saved yet</span>
             <div className="ml-auto flex gap-2">
               <button onClick={cancelEdit} className="px-4 py-1.5 rounded-lg border border-amber-500/20 text-xs font-bold text-amber-400/70 hover:text-amber-400 transition-colors">
                 Cancel
               </button>
               <button onClick={saveEdit} className="px-4 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-xs font-bold text-amber-400 hover:bg-amber-500/30 transition-colors">
-                Save Changes
+                Save
               </button>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function QuotePage() {
                     <span className="material-symbols-outlined text-sm">close</span>Cancel
                   </button>
                   <button onClick={saveEdit} className="px-5 py-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/20 transition-colors flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm">check</span>Save Changes
+                    <span className="material-symbols-outlined text-sm">check</span>Save
                   </button>
                 </>
               ) : (
@@ -226,17 +226,17 @@ export default function QuotePage() {
           <div className="flex items-end justify-between mb-4">
             <div>
               <span className="text-primary font-headline font-bold tracking-widest text-[10px] uppercase">
-                Supplier Selection
+                Supplier
               </span>
               <h2 className="font-headline font-bold text-lg tracking-tight text-on-surface mt-0.5">
-                Applied Pricing Source
+                Price Source
                 <span className="ml-3 text-sm font-normal text-on-surface-variant font-body">
                   — {currentSupplier.name}
                 </span>
               </h2>
             </div>
             <p className="text-[10px] text-on-surface-variant hidden md:block">
-              Switching supplier reprices all materials instantly
+              Switching supplier updates all prices
             </p>
           </div>
 
@@ -324,7 +324,7 @@ export default function QuotePage() {
                 <div>
                   <h3 className="font-headline font-bold text-lg tracking-tight">{t.quote.structuredMaterials}</h3>
                   <p className="text-xs text-on-surface-variant mt-0.5">
-                    {isEditing ? 'Click any quantity or price to edit' : `Priced by ${currentSupplier.name} · ${t.quote.aiPricing.split('·')[1]?.trim() ?? t.quote.aiPricing}`}
+                    {isEditing ? 'Click a quantity or price to edit' : `Priced by ${currentSupplier.name} · ${t.quote.aiPricing.split('·')[1]?.trim() ?? t.quote.aiPricing}`}
                   </p>
                 </div>
                 <span className={`text-[10px] font-mono uppercase tracking-widest flex items-center gap-1.5 ${isEditing ? 'text-amber-400' : 'text-emerald-400'}`}>

@@ -88,7 +88,7 @@ export default function ProcessingPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent opacity-70 pointer-events-none z-10" />
               <img
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuAt1rZXIaYWTXngSOCM60O7RaF61YA1luM13x5Tpf1qzpHBcLIHzMkXBLmsaA_dJohq1Rs4y5OwI6s_dldStMsbtgOeIQ5Xe3EUB8zpGVUWecvvnrM5QZn6jqdqOCwPs2hf-FTM5Q52QOWgMu-BJek7_0zlFvlpBJOnP3_p2EJDZBFvo9qPLQJAouQY3iRh0ph-nf-A7F9UhuPr0K_2OBEb-u09fbBpojUWi1SekKwdtERKto5fdm5imAuN7g3Ntk_UukVuPwQUZ6I"
-                alt="Technical architectural blueprint"
+                alt="Blueprint preview"
                 className="w-full h-[420px] object-cover opacity-50"
               />
               {/* Vertical scan bar */}
@@ -107,13 +107,13 @@ export default function ProcessingPage() {
               )}
               {/* Data annotation badges */}
               <div className="absolute top-1/4 left-1/4 p-2 bg-primary-container/20 backdrop-blur-md border border-primary/30 rounded text-[10px] text-primary font-mono tracking-tighter z-20">
-                STRUCTURAL_COLUMN_V2 [REF: 902]
+                COLUMN CHECK [REF: 902]
               </div>
               <div className="absolute bottom-1/3 right-1/5 p-2 bg-primary-container/20 backdrop-blur-md border border-primary/30 rounded text-[10px] text-primary font-mono tracking-tighter z-20">
-                LOAD_BEARING_CALC: PASS
+                LOAD CHECK: OK
               </div>
               <div className="absolute top-2/3 left-1/2 -translate-x-1/2 p-2 bg-emerald-500/10 backdrop-blur-md border border-emerald-500/30 rounded text-[10px] text-emerald-400 font-mono tracking-tighter z-20">
-                MAT_SPEC: GRADE-50 STEEL
+                MATERIAL: STEEL
               </div>
 
               {/* Done overlay */}
@@ -134,7 +134,7 @@ export default function ProcessingPage() {
             {/* Progress bar */}
             <div className="mt-4 space-y-2">
               <div className="flex justify-between text-xs font-mono text-on-surface-variant">
-                <span>ANALYSIS PROGRESS</span>
+                <span>PROGRESS</span>
                 <span className="text-primary">{Math.round(progress)}%</span>
               </div>
               <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
@@ -252,17 +252,16 @@ export default function ProcessingPage() {
             </div>
             <div className="space-y-2">
               <h3 className="font-headline font-extrabold text-primary text-[10px] tracking-[0.2em] uppercase">
-                AI Foreman Insights
+                INSIGHT
               </h3>
               <p className="text-on-surface-variant font-medium text-base leading-relaxed italic">
-                "Structural integrity analysis indicates a 14% optimization opportunity in the
-                load-bearing beams. Re-calculating material stress requirements to ensure maximum
-                safety with minimum waste."
+                "We found a 14% savings chance in the main beams. We are
+                re-checking stress to keep safety high and waste low."
               </p>
               <div className="flex gap-2 items-center text-[10px] font-bold tracking-widest uppercase mt-2">
                 <span className={`w-1.5 h-1.5 rounded-full ${done ? 'bg-emerald-500' : 'bg-primary animate-pulse'}`} />
                 <span className={done ? 'text-emerald-400' : 'text-primary'}>
-                  {done ? 'CALCULATION COMPLETE' : 'LIVE NEURAL CALCULATION IN PROGRESS'}
+                  {done ? 'COMPLETE' : 'WORKING NOW'}
                 </span>
               </div>
             </div>
