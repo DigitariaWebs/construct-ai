@@ -6,6 +6,7 @@ import Modal from '@/components/Modal'
 import Toast from '@/components/Toast'
 import Animate from '@/components/Animate'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { generateQuotePdf } from '@/lib/generateQuotePdf'
 
 const materials = [
   {
@@ -75,9 +76,15 @@ export default function QuotePage() {
   const handleDownload = () => {
     setDownloading(true)
     setTimeout(() => {
-      setDownloading(false)
-      setToast({ message: t.quote.toastDownloaded, type: 'success' })
-    }, 1800)
+      try {
+        generateQuotePdf()
+        setToast({ message: t.quote.toastDownloaded, type: 'success' })
+      } catch {
+        setToast({ message: 'PDF generation failed. Please try again.', type: 'error' })
+      } finally {
+        setDownloading(false)
+      }
+    }, 400)
   }
 
   const handleApprove = () => {
