@@ -1,452 +1,280 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import AppLayout from '@/components/AppLayout'
 import Toast from '@/components/Toast'
 import Animate from '@/components/Animate'
-import { useLanguage } from '@/contexts/LanguageContext'
+import { SUPPLIERS } from '@/lib/suppliers'
 
-const sidebarItems = [
-  { id: 'account', icon: 'person' },
-  { id: 'supplier', icon: 'local_shipping' },
-  { id: 'theme', icon: 'palette' },
-  { id: 'security', icon: 'security' },
+type Tab = 'profil' | 'fournisseurs' | 'abonnement' | 'securite' | 'notifications'
+
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'profil',        label: 'Profil',        icon: 'person'        },
+  { id: 'fournisseurs',  label: 'Fournisseurs',  icon: 'storefront'    },
+  { id: 'abonnement',    label: 'Abonnement',    icon: 'credit_card'   },
+  { id: 'securite',      label: 'Sécurité',      icon: 'lock'          },
+  { id: 'notifications', label: 'Notifications', icon: 'notifications' },
 ]
 
-const defaultForm = {
-  name: 'Alexander Vance',
-  email: 'a.vance@construct.ai',
-  org: 'Vance Structural Group',
-  region: 'North America — Eastern',
-}
+const TAB_IDS = TABS.map(t => t.id)
+const isTab = (v: string | null): v is Tab => !!v && (TAB_IDS as string[]).includes(v)
 
-const defaultSecurity = {
-  twoFactor: true,
-  sessionTimeout: '30',
-  ipWhitelist: false,
-  auditLog: true,
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button type="button" onClick={() => onChange(!checked)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${checked ? 'bg-primary' : 'bg-surface-container-highest'}`}>
+      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-md transform transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+    </button>
+  )
 }
 
 export default function SettingsPage() {
-  const { t } = useLanguage()
-  const [active, setActive]   = useState('account')
-  const [toast, setToast]     = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null)
+  const [activeTab, setActiveTab] = useState<Tab>('profil')
+  const [toast, setToast]         = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
-  // Account form
-  const [form, setForm]       = useState(defaultForm)
-  const [savedForm, setSaved] = useState(defaultForm)
+  // Sync tab ↔ ?tab= in URL (supports deep links like /settings?tab=abonnement)
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('tab')
+    if (isTab(fromUrl)) setActiveTab(fromUrl)
+  }, [])
 
-  // Supplier toggles
-  const [aiSourcing, setAiSourcing]                 = useState(true)
-  const [logisticsPrecision, setLogisticsPrecision] = useState(false)
-  const [autoReorder, setAutoReorder]               = useState(false)
-  const [savedToggles, setSavedToggles]             = useState({ aiSourcing: true, logisticsPrecision: false, autoReorder: false })
-
-  // Theme
-  const [selectedTheme, setSelectedTheme]           = useState<'dark' | 'light'>('dark')
-  const [savedTheme, setSavedTheme]                 = useState<'dark' | 'light'>('dark')
-
-  // Security
-  const [security, setSecurity]   = useState(defaultSecurity)
-  const [savedSecurity, setSavedSecurity] = useState(defaultSecurity)
-
-  const handleSave = () => {
-    setSaved(form)
-    setSavedToggles({ aiSourcing, logisticsPrecision, autoReorder })
-    setSavedTheme(selectedTheme)
-    setSavedSecurity(security)
-    setToast({ message: t.settings.toastSaved, type: 'success' })
+  const selectTab = (tab: Tab) => {
+    setActiveTab(tab)
+    const url = new URL(window.location.href)
+    url.searchParams.set('tab', tab)
+    window.history.replaceState(null, '', url)
   }
 
-  const handleDiscard = () => {
-    setForm(savedForm)
-    setAiSourcing(savedToggles.aiSourcing)
-    setLogisticsPrecision(savedToggles.logisticsPrecision)
-    setAutoReorder(savedToggles.autoReorder)
-    setSelectedTheme(savedTheme)
-    setSecurity(savedSecurity)
-    setToast({ message: t.settings.toastDiscarded, type: 'info' })
-  }
+  const [profil, setProfil] = useState({ firstName: 'Jean-Marc', lastName: 'Bertrand', email: 'jm.bertrand@plomberie-bertrand.fr', phone: '06 12 34 56 78', company: 'Plomberie Bertrand', sector: 'Plomberie' })
+  const [defaultSupplier, setDefaultSupplier] = useState('cdo')
+  const [twoFactor,   setTwoFactor]   = useState(false)
+  const [auditLog,    setAuditLog]    = useState(true)
+  const [ipWhitelist, setIpWhitelist] = useState(false)
+  const [sessionTimeout, setSessionTimeout] = useState(60)
+  const [notifs, setNotifs] = useState({ devisGenere: true, erreurAnalyse: true, renouvellement: true, nouvelles: false, conseils: false })
 
-  const scrollTo = (id: string) => {
-    setActive(id)
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  const Toggle = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
-    <button
-      onClick={onChange}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-        value ? 'bg-primary-container' : 'bg-outline-variant/30'
-      }`}
-    >
-      <span
-        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition duration-200 ease-in-out ${
-          value ? 'translate-x-5' : 'translate-x-0'
-        }`}
-      />
-    </button>
-  )
+  const handleSave = () => setToast({ message: 'Paramètres enregistrés.', type: 'success' })
 
   return (
     <AppLayout>
+      <div className="pb-32 space-y-8">
 
-      <main className="pb-32 px-6 max-w-6xl mx-auto">
-        {/* Header */}
-        <Animate variant="fade-up">
-        <div className="mb-12">
-          <p className="text-[10px] font-mono text-primary tracking-[0.3em] uppercase mb-2">{t.settings.systemConfig}</p>
-          <h1 className="font-headline font-black text-4xl md:text-5xl tracking-tighter text-on-surface mb-2">
-            {t.settings.pageTitle}
-          </h1>
-          <p className="text-on-surface-variant max-w-2xl text-base font-light">
-            {t.settings.pageDesc}
-          </p>
-        </div>
+        <Animate variant="fade-up" as="section" className="pt-4">
+          <span className="text-primary font-headline font-bold tracking-widest text-[10px] uppercase">Configuration</span>
+          <h1 className="text-4xl md:text-5xl font-headline font-black tracking-tighter text-on-surface mt-1">Paramètres</h1>
+          <p className="text-on-surface-variant mt-1 text-sm">Gérez votre compte et vos préférences.</p>
         </Animate>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-          {/* Sidebar */}
-          <aside className="lg:col-span-3 sticky top-28 space-y-1">
-            {sidebarItems.map((item, i) => (
-              <button
-                key={item.id}
-                onClick={() => scrollTo(item.id)}
-                className={`w-full text-left px-4 py-3 rounded-xl font-semibold flex items-center gap-3 transition-all ${
-                  active === item.id
-                    ? 'bg-primary-container/10 text-primary border border-primary/10'
-                    : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface border border-transparent'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
-                <span className="text-sm">{t.settings.sidebar[i]}</span>
-              </button>
-            ))}
+        <div className="flex flex-col lg:flex-row gap-8">
 
-            {/* Save / Discard in sidebar on desktop */}
-            <div className="pt-6 space-y-2 hidden lg:block">
-              <button
-                onClick={handleSave}
-                className="w-full py-3 rounded-xl bg-primary-container text-on-primary-container font-headline font-bold text-sm hover:shadow-[0_0_20px_rgba(46,91,255,0.3)] hover:scale-[1.02] active:scale-95 transition-all"
-              >
-                {t.settings.saveConfig}
-              </button>
-              <button
-                onClick={handleDiscard}
-                className="w-full py-3 rounded-xl border border-outline-variant/20 text-on-surface-variant font-bold text-sm hover:bg-surface-container hover:text-on-surface transition-all"
-              >
-                {t.settings.discardChanges}
-              </button>
-            </div>
-          </aside>
+          <Animate variant="slide-left" className="lg:w-52 flex-shrink-0">
+            <nav className="bg-surface-container-low rounded-2xl border border-white/5 p-2 space-y-1">
+              {TABS.map(tab => (
+                <button key={tab.id} onClick={() => selectTab(tab.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === tab.id ? 'bg-primary/10 text-primary border-l-2 border-primary pl-3' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'}`}>
+                  <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: activeTab === tab.id ? "'FILL' 1" : "'FILL' 0" }}>{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </Animate>
 
-          {/* Content */}
-          <div className="lg:col-span-9 space-y-20">
+          <Animate variant="fade-up" delay={60} className="flex-1 min-w-0">
 
-            {/* ── Account ── */}
-            <Animate variant="fade-up" as="section" id="account" className="scroll-mt-32 space-y-8">
-              <div className="border-b border-outline-variant/10 pb-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-primary text-sm">person</span>
+            {activeTab === 'profil' && (
+              <div className="bg-surface-container-low rounded-2xl border border-white/5 p-8 space-y-8">
+                <div>
+                  <h2 className="font-headline font-bold text-xl text-on-surface mb-1">Profil</h2>
+                  <p className="text-sm text-on-surface-variant">Informations de votre compte et de votre entreprise.</p>
                 </div>
-                <h2 className="font-headline font-bold text-xl tracking-tight text-on-surface">{t.settings.accountTitle}</h2>
-              </div>
-
-              {/* Avatar row */}
-              <div className="flex items-center gap-5">
-                <div className="relative">
-                  <img
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjYFBXAWJr0LMMkLbMvZl5QYoHw44SSGV75FHW9MPIksbSuwK-OIML2NqxcdsltnDX_gYxN7shjzShRS-rTMe5giDTNn1CzS_uuISf7hvUGByWQDuQvo-CXQ-zRkRbXshKlU4hTmEYVGVpFCgkcpvdVGoqIbO1WPzfEJf_Gtl5BF5g_lErhNhZCKo_0XnUQXDUv21-kFyjrCS15_LpeuAmwdXgIO6IK50-uypuxXLUuOft4-n2XPA3nxGwkwDTkr4UMI0rz04zNx4"
-                    alt="User avatar"
-                    className="w-16 h-16 rounded-2xl object-cover border border-outline-variant/20"
-                  />
-                  <button
-                    onClick={() => setToast({ message: t.settings.toastAvatar, type: 'info' })}
-                    className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary-container flex items-center justify-center"
-                  >
-                    <span className="material-symbols-outlined text-on-primary-container text-xs">edit</span>
-                  </button>
+                <div className="flex items-center gap-5">
+                  <div className="w-16 h-16 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-headline font-black text-xl text-primary">JB</div>
+                  <div>
+                    <button onClick={() => setToast({ message: "Upload de photo bientôt disponible.", type: 'info' })} className="text-sm font-semibold text-primary hover:text-white transition-colors">Changer la photo</button>
+                    <p className="text-xs text-on-surface-variant mt-0.5">JPG, PNG · max 2 Mo</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {[
+                    { label: 'Prénom',    key: 'firstName', type: 'text'  },
+                    { label: 'Nom',       key: 'lastName',  type: 'text'  },
+                    { label: 'Email',     key: 'email',     type: 'email' },
+                    { label: 'Téléphone', key: 'phone',     type: 'tel'   },
+                    { label: 'Société',   key: 'company',   type: 'text'  },
+                  ].map(f => (
+                    <div key={f.key}>
+                      <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">{f.label}</label>
+                      <input type={f.type} value={profil[f.key as keyof typeof profil]} onChange={e => setProfil(p => ({ ...p, [f.key]: e.target.value }))} className="w-full bg-surface-container border border-outline-variant/20 rounded-xl px-4 py-3 text-sm text-on-surface focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all" />
+                    </div>
+                  ))}
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Secteur</label>
+                    <select value={profil.sector} onChange={e => setProfil(p => ({ ...p, sector: e.target.value }))} className="w-full bg-surface-container border border-outline-variant/20 rounded-xl px-4 py-3 text-sm text-on-surface focus:outline-none focus:border-primary/40 transition-all">
+                      <option>Plomberie</option>
+                      <option>CVC / Chauffage</option>
+                      <option>Électricité</option>
+                      <option>Multi-secteur</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
-                  <p className="font-headline font-bold text-on-surface">{form.name}</p>
-                  <p className="text-xs text-on-surface-variant">{form.email}</p>
-                  <p className="text-[10px] text-primary font-mono mt-1">{t.settings.proPlan}</p>
+                  <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Logo société (exports PDF)</label>
+                  <button onClick={() => setToast({ message: "Upload de logo bientôt disponible.", type: 'info' })} className="w-full md:w-64 h-20 rounded-xl border-2 border-dashed border-outline-variant/30 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors group">
+                    <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">upload</span>
+                    <span className="text-xs text-on-surface-variant">Téléverser le logo</span>
+                  </button>
+                </div>
+                <div className="flex gap-3 pt-4 border-t border-white/5">
+                  <button onClick={handleSave} className="px-6 py-3 bg-primary-container text-on-primary-container font-bold rounded-xl hover:shadow-[0_0_20px_rgba(212,255,58,0.3)] transition-all">Enregistrer</button>
                 </div>
               </div>
+            )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[
-                  { label: t.settings.fieldLabels[0], key: 'name', type: 'text' },
-                  { label: t.settings.fieldLabels[1], key: 'email', type: 'email' },
-                  { label: t.settings.fieldLabels[2], key: 'org', type: 'text' },
-                  { label: t.settings.fieldLabels[3], key: 'region', type: 'text' },
-                ].map(({ label, key, type }) => (
-                  <div key={key} className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                      {label}
-                    </label>
-                    <input
-                      type={type}
-                      value={form[key as keyof typeof form]}
-                      onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                      className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-3 text-on-surface text-sm focus:border-primary/40 focus:outline-none transition-all"
-                    />
+            {activeTab === 'fournisseurs' && (
+              <div className="space-y-6">
+                <div className="bg-surface-container-low rounded-2xl border border-white/5 p-8">
+                  <h2 className="font-headline font-bold text-xl text-on-surface mb-1">Fournisseur par défaut</h2>
+                  <p className="text-sm text-on-surface-variant mb-6">Utilisé automatiquement lors de la génération de devis.</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {SUPPLIERS.filter(s => s.id !== 'auto').map(s => (
+                      <button key={s.id} onClick={() => setDefaultSupplier(s.id)} className={`p-4 rounded-2xl border text-left transition-all duration-300 ${defaultSupplier === s.id ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(212,255,58,0.15)]' : 'border-white/5 bg-surface-container hover:border-primary/30'}`}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 font-headline font-black text-xs ${defaultSupplier === s.id ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface'}`}>{s.initials}</div>
+                        <div className="font-bold text-sm text-on-surface">{s.name}</div>
+                        <div className="text-[10px] text-on-surface-variant mt-0.5">{s.sub}</div>
+                        {defaultSupplier === s.id && <div className="mt-2 text-[9px] font-bold text-primary uppercase tracking-widest">✓ Actif</div>}
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </Animate>
-
-            {/* ── Supplier Preferences ── */}
-            <Animate variant="fade-up" delay={60} as="section" id="supplier" className="scroll-mt-32 space-y-8">
-              <div className="border-b border-outline-variant/10 pb-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-secondary text-sm">local_shipping</span>
+                  <button onClick={handleSave} className="mt-6 px-6 py-3 bg-primary-container text-on-primary-container font-bold rounded-xl hover:shadow-[0_0_20px_rgba(212,255,58,0.3)] transition-all">Enregistrer</button>
                 </div>
-                <h2 className="font-headline font-bold text-xl tracking-tight text-on-surface">{t.settings.supplierTitle}</h2>
-              </div>
-
-              <div className="space-y-4">
-                {[
-                  {
-                    icon: 'smart_toy',     iconBg: 'bg-primary/10',   iconColor: 'text-primary',
-                    title: t.settings.supplierToggles[0].title,
-                    desc: t.settings.supplierToggles[0].desc,
-                    value: aiSourcing,   onChange: () => setAiSourcing((v) => !v),
-                  },
-                  {
-                    icon: 'precision_manufacturing', iconBg: 'bg-secondary/10', iconColor: 'text-secondary',
-                    title: t.settings.supplierToggles[1].title,
-                    desc: t.settings.supplierToggles[1].desc,
-                    value: logisticsPrecision, onChange: () => setLogisticsPrecision((v) => !v),
-                  },
-                  {
-                    icon: 'autorenew',    iconBg: 'bg-tertiary/10',  iconColor: 'text-tertiary',
-                    title: t.settings.supplierToggles[2].title,
-                    desc: t.settings.supplierToggles[2].desc,
-                    value: autoReorder,  onChange: () => setAutoReorder((v) => !v),
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.title}
-                    className="flex items-center justify-between p-5 rounded-2xl bg-surface-container border border-outline-variant/5 hover:border-primary/10 transition-all gap-4"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className={`w-10 h-10 rounded-xl ${item.iconBg} flex items-center justify-center ${item.iconColor} shrink-0`}>
-                        <span className="material-symbols-outlined text-sm">{item.icon}</span>
-                      </div>
-                      <div>
-                        <h4 className="font-headline font-bold text-on-surface text-sm">{item.title}</h4>
-                        <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed max-w-sm">{item.desc}</p>
-                      </div>
-                    </div>
-                    <Toggle value={item.value} onChange={item.onChange} />
-                  </div>
-                ))}
-              </div>
-
-              {/* Supplier priority list */}
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{t.settings.preferredSupplier}</label>
-                {['CDO — Comptoir Des Fers', 'Pim Plastic', 'Richardson', 'Marplin'].map((s, i) => (
-                  <div key={s} className="flex items-center gap-3 p-3 bg-surface-container rounded-xl border border-white/5">
-                    <span className="text-[10px] font-mono text-primary w-4">{i + 1}</span>
-                    <span className="text-sm text-on-surface flex-1">{s}</span>
-                    <span className="material-symbols-outlined text-outline text-sm cursor-grab">drag_indicator</span>
-                  </div>
-                ))}
-              </div>
-            </Animate>
-
-            {/* ── Theme ── */}
-            <Animate variant="fade-up" delay={80} as="section" id="theme" className="scroll-mt-32 space-y-8">
-              <div className="border-b border-outline-variant/10 pb-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-tertiary/10 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-tertiary text-sm">palette</span>
-                </div>
-                <h2 className="font-headline font-bold text-xl tracking-tight text-on-surface">{t.settings.themeTitle}</h2>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Midnight Dark */}
-                <button
-                  onClick={() => setSelectedTheme('dark')}
-                  className={`relative cursor-pointer overflow-hidden rounded-2xl p-2 transition-all text-left ${
-                    selectedTheme === 'dark'
-                      ? 'border-2 border-primary ring-4 ring-primary/5'
-                      : 'border border-outline-variant/10 hover:border-primary/30'
-                  }`}
-                >
-                  <div className="aspect-video rounded-xl bg-[#060e20] mb-3 overflow-hidden p-4 space-y-2">
-                    <div className="h-2 w-1/3 bg-[#2e5bff]/40 rounded-full" />
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="h-10 bg-[#131b2e] rounded-lg border border-[#2e5bff]/10" />
-                      <div className="h-10 bg-[#171f32] rounded-lg" />
-                      <div className="h-10 bg-[#2e5bff]/20 rounded-lg border border-[#2e5bff]/20" />
-                    </div>
-                    <div className="h-1 w-2/3 bg-[#2e5bff]/30 rounded-full" />
-                    <div className="h-1 w-1/2 bg-slate-700 rounded-full" />
-                  </div>
-                  <div className="px-2 pb-2 flex justify-between items-center">
+                <div className="bg-surface-container-low rounded-2xl border border-outline-variant/10 p-8">
+                  <div className="flex items-start justify-between mb-4">
                     <div>
-                      <span className="font-headline font-bold text-on-surface text-sm">{t.settings.darkTheme.name}</span>
-                      <p className="text-[10px] text-on-surface-variant">{t.settings.darkTheme.desc}</p>
+                      <h2 className="font-headline font-bold text-xl text-on-surface mb-1">Compte fournisseur</h2>
+                      <p className="text-sm text-on-surface-variant">Connectez votre compte pour accéder à vos prix remisés automatiquement.</p>
                     </div>
-                    {selectedTheme === 'dark' && (
-                      <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                    )}
+                    <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">Bientôt</span>
                   </div>
-                </button>
-
-                {/* Clean Light */}
-                <button
-                  onClick={() => setSelectedTheme('light')}
-                  className={`relative cursor-pointer overflow-hidden rounded-2xl p-2 transition-all text-left ${
-                    selectedTheme === 'light'
-                      ? 'border-2 border-primary ring-4 ring-primary/5'
-                      : 'border border-outline-variant/10 hover:border-primary/30'
-                  }`}
-                >
-                  <div className="aspect-video rounded-xl bg-slate-50 mb-3 overflow-hidden p-4 space-y-2">
-                    <div className="h-2 w-1/3 bg-blue-600/40 rounded-full" />
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="h-10 bg-white rounded-lg border border-slate-200" />
-                      <div className="h-10 bg-slate-100 rounded-lg" />
-                      <div className="h-10 bg-blue-50 rounded-lg border border-blue-200" />
-                    </div>
-                    <div className="h-1 w-2/3 bg-slate-300 rounded-full" />
-                    <div className="h-1 w-1/2 bg-slate-200 rounded-full" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {SUPPLIERS.filter(s => s.id !== 'auto').map(s => (
+                      <div key={s.id} className="p-4 rounded-xl border border-outline-variant/10 bg-surface-container opacity-60">
+                        <div className="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center font-headline font-black text-[9px] mb-2">{s.initials}</div>
+                        <div className="text-sm font-bold text-on-surface-variant">{s.name}</div>
+                        <div className="mt-2 text-[10px] text-on-surface-variant border border-outline-variant/20 rounded-lg px-2 py-1 text-center">Connecter</div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="px-2 pb-2 flex justify-between items-center">
-                    <div>
-                      <span className="font-headline font-bold text-on-surface text-sm">{t.settings.lightTheme.name}</span>
-                      <p className="text-[10px] text-on-surface-variant">{t.settings.lightTheme.desc}</p>
-                    </div>
-                    {selectedTheme === 'light' && (
-                      <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                    )}
-                  </div>
-                </button>
+                  <p className="mt-4 text-xs text-on-surface-variant">💡 Vos remises personnelles seront appliquées automatiquement lors de la génération de devis.</p>
+                </div>
               </div>
+            )}
 
-              {/* Density */}
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{t.settings.interfaceDensity}</label>
-                <div className="flex gap-3">
-                  {t.settings.densityOptions.map((d) => (
-                    <button
-                      key={d}
-                      className="flex-1 py-2.5 rounded-xl border border-outline-variant/20 text-xs font-semibold text-on-surface-variant hover:border-primary/30 hover:text-on-surface transition-all first:border-primary first:text-primary"
-                    >
-                      {d}
-                    </button>
+            {activeTab === 'abonnement' && (
+              <div className="space-y-6">
+                <div className="bg-surface-container-low rounded-2xl border border-primary/30 shadow-[0_0_40px_rgba(212,255,58,0.08)] p-8">
+                  <div className="flex items-start justify-between mb-6">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /><span className="text-emerald-400 text-[10px] font-bold uppercase tracking-widest">Actif</span></div>
+                      <h2 className="font-headline font-black text-3xl text-on-surface">Plan Pro</h2>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-headline font-black text-white">450 €<span className="text-lg text-on-surface-variant"> / an</span></div>
+                      <div className="text-xs text-on-surface-variant mt-1">Renouvellement le 15 avril 2027</div>
+                    </div>
+                  </div>
+                  <ul className="space-y-3 mb-6">
+                    {['Devis illimités', '4 fournisseurs inclus (CDO, Pim Plastic, Richardson, Marplin)', 'Export PDF', 'Analyse CCTP automatique', 'Support inclus', 'Compte fournisseur — prix remisés (V2)'].map(f => (
+                      <li key={f} className="flex items-center gap-2 text-sm text-on-surface-variant">
+                        <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>{f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button onClick={() => setToast({ message: 'Portail de facturation bientôt disponible.', type: 'info' })} className="px-6 py-3 border border-outline-variant/20 bg-surface-container text-on-surface font-bold rounded-xl hover:bg-surface-container-high transition-all text-sm">Gérer l'abonnement</button>
+                </div>
+                <div className="bg-surface-container-low rounded-2xl border border-white/5 p-8">
+                  <h3 className="font-headline font-bold text-lg mb-5">Historique de facturation</h3>
+                  <div className="space-y-3">
+                    {[{ date: '15 avr. 2026', amount: '450,00 €' }, { date: '15 avr. 2025', amount: '450,00 €' }].map(b => (
+                      <div key={b.date} className="flex items-center justify-between p-4 bg-surface-container rounded-xl border border-outline-variant/10">
+                        <div><span className="text-sm text-on-surface font-medium">{b.date}</span><span className="ml-3 text-[10px] text-emerald-400 font-bold">Payé</span></div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-mono text-on-surface">{b.amount}</span>
+                          <button onClick={() => setToast({ message: 'Facture téléchargée.', type: 'success' })} className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary transition-colors"><span className="material-symbols-outlined text-sm">download</span></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'securite' && (
+              <div className="space-y-6">
+                <div className="bg-surface-container-low rounded-2xl border border-white/5 p-8 space-y-6">
+                  <div>
+                    <h2 className="font-headline font-bold text-xl text-on-surface mb-1">Sécurité</h2>
+                    <p className="text-sm text-on-surface-variant">Gérez l'accès et la sécurité de votre compte.</p>
+                  </div>
+                  <div className="space-y-0 divide-y divide-white/5">
+                    {[
+                      { label: 'Authentification à deux facteurs', desc: 'Exiger un code supplémentaire à chaque connexion.', value: twoFactor,   set: setTwoFactor   },
+                      { label: "Journal d'audit",                   desc: 'Enregistrer tous les accès et modifications.',     value: auditLog,    set: setAuditLog    },
+                      { label: "Liste blanche d'IP",                desc: "Limiter l'accès aux adresses IP approuvées.",      value: ipWhitelist, set: setIpWhitelist },
+                    ].map(item => (
+                      <div key={item.label} className="flex items-start justify-between gap-4 py-5">
+                        <div><div className="text-sm font-semibold text-on-surface">{item.label}</div><div className="text-xs text-on-surface-variant mt-0.5">{item.desc}</div></div>
+                        <Toggle checked={item.value} onChange={item.set} />
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Délai de session (minutes)</label>
+                    <div className="flex items-center gap-3">
+                      <input type="number" min="5" max="480" value={sessionTimeout} onChange={e => setSessionTimeout(Number(e.target.value))} className="w-28 bg-surface-container border border-outline-variant/20 rounded-xl px-4 py-3 text-sm text-on-surface focus:outline-none focus:border-primary/40 transition-all" />
+                      <span className="text-sm text-on-surface-variant">minutes</span>
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t border-white/5">
+                    <button onClick={() => setToast({ message: 'Lien de réinitialisation envoyé.', type: 'success' })} className="px-6 py-3 border border-outline-variant/20 bg-surface-container text-on-surface font-bold rounded-xl hover:bg-surface-container-high transition-all text-sm">Changer le mot de passe</button>
+                  </div>
+                </div>
+                <div className="bg-surface-container-low rounded-2xl border border-red-500/20 p-8">
+                  <h3 className="font-headline font-bold text-lg text-red-400 mb-1">Zone dangereuse</h3>
+                  <p className="text-sm text-on-surface-variant mb-5">La suppression de votre compte est irréversible. Tous vos devis seront définitivement perdus.</p>
+                  <button onClick={() => setToast({ message: 'Contactez le support pour supprimer votre compte.', type: 'info' })} className="px-6 py-3 border border-red-500/30 text-red-400 font-bold rounded-xl hover:bg-red-500/10 transition-all text-sm">Supprimer mon compte</button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'notifications' && (
+              <div className="bg-surface-container-low rounded-2xl border border-white/5 p-8 space-y-6">
+                <div>
+                  <h2 className="font-headline font-bold text-xl text-on-surface mb-1">Notifications</h2>
+                  <p className="text-sm text-on-surface-variant">Choisissez les emails que vous souhaitez recevoir.</p>
+                </div>
+                <div className="space-y-0 divide-y divide-white/5">
+                  {[
+                    { key: 'devisGenere',    label: 'Devis généré avec succès',               desc: 'Reçu à chaque nouveau devis créé.'              },
+                    { key: 'erreurAnalyse',  label: "Erreur lors de l'analyse",               desc: "Si l'IA ne parvient pas à lire votre CCTP."     },
+                    { key: 'renouvellement', label: "Rappel de renouvellement d'abonnement",  desc: "14 jours avant l'expiration."                   },
+                    { key: 'nouvelles',      label: 'Nouvelles fonctionnalités',              desc: 'Mises à jour et nouvelles versions.'             },
+                    { key: 'conseils',       label: 'Conseils et bonnes pratiques',           desc: 'Astuces pour optimiser vos devis.'              },
+                  ].map(item => (
+                    <div key={item.key} className="flex items-center justify-between gap-4 py-5">
+                      <div><div className="text-sm font-semibold text-on-surface">{item.label}</div><div className="text-xs text-on-surface-variant mt-0.5">{item.desc}</div></div>
+                      <Toggle checked={notifs[item.key as keyof typeof notifs]} onChange={v => setNotifs(n => ({ ...n, [item.key]: v }))} />
+                    </div>
                   ))}
                 </div>
-              </div>
-            </Animate>
-
-            {/* ── Security ── */}
-            <Animate variant="fade-up" delay={100} as="section" id="security" className="scroll-mt-32 space-y-8">
-              <div className="border-b border-outline-variant/10 pb-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-red-400 text-sm">security</span>
+                <div className="pt-4 border-t border-white/5">
+                  <button onClick={handleSave} className="px-6 py-3 bg-primary-container text-on-primary-container font-bold rounded-xl hover:shadow-[0_0_20px_rgba(212,255,58,0.3)] transition-all">Enregistrer les préférences</button>
                 </div>
-                <h2 className="font-headline font-bold text-xl tracking-tight text-on-surface">{t.settings.securityTitle}</h2>
               </div>
+            )}
 
-              <div className="space-y-4">
-                {[
-                  {
-                    icon: 'phonelink_lock', iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-400',
-                    title: t.settings.securityToggles[0].title,
-                    desc: t.settings.securityToggles[0].desc,
-                    key: 'twoFactor' as const,
-                  },
-                  {
-                    icon: 'history',        iconBg: 'bg-blue-500/10',    iconColor: 'text-blue-400',
-                    title: t.settings.securityToggles[1].title,
-                    desc: t.settings.securityToggles[1].desc,
-                    key: 'auditLog' as const,
-                  },
-                  {
-                    icon: 'router',         iconBg: 'bg-orange-500/10',  iconColor: 'text-orange-400',
-                    title: t.settings.securityToggles[2].title,
-                    desc: t.settings.securityToggles[2].desc,
-                    key: 'ipWhitelist' as const,
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.title}
-                    className="flex items-center justify-between p-5 rounded-2xl bg-surface-container border border-outline-variant/5 gap-4"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className={`w-10 h-10 rounded-xl ${item.iconBg} flex items-center justify-center ${item.iconColor} shrink-0`}>
-                        <span className="material-symbols-outlined text-sm">{item.icon}</span>
-                      </div>
-                      <div>
-                        <h4 className="font-headline font-bold text-on-surface text-sm">{item.title}</h4>
-                        <p className="text-xs text-on-surface-variant mt-0.5">{item.desc}</p>
-                      </div>
-                    </div>
-                    <Toggle
-                      value={security[item.key]}
-                      onChange={() => setSecurity((s) => ({ ...s, [item.key]: !s[item.key] }))}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Session timeout */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                  {t.settings.sessionTimeout}
-                </label>
-                <select
-                  value={security.sessionTimeout}
-                  onChange={(e) => setSecurity((s) => ({ ...s, sessionTimeout: e.target.value }))}
-                  className="w-full md:w-64 bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-3 text-on-surface text-sm focus:border-primary/40 focus:outline-none transition-all"
-                >
-                  {['15', '30', '60', '120', '480'].map((v) => (
-                    <option key={v} value={v}>{v} {t.settings.minutes}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Change password */}
-              <button
-                onClick={() => setToast({ message: t.settings.toastPassword, type: 'info' })}
-                className="flex items-center gap-2 text-sm font-semibold text-primary hover:underline transition-all"
-              >
-                <span className="material-symbols-outlined text-sm">lock_reset</span>
-                {t.settings.changePassword}
-              </button>
-            </Animate>
-
-            {/* Mobile save/discard footer */}
-            <div className="pt-8 flex flex-col sm:flex-row items-center justify-end gap-3 border-t border-outline-variant/10 lg:hidden">
-              <button
-                onClick={handleDiscard}
-                className="w-full sm:w-auto px-8 py-3 rounded-full font-headline font-bold text-on-surface-variant border border-outline-variant/20 hover:bg-surface-container transition-all"
-              >
-                {t.settings.discardChanges}
-              </button>
-              <button
-                onClick={handleSave}
-                className="w-full sm:w-auto px-10 py-3 rounded-full bg-primary-container text-on-primary-container font-headline font-extrabold tracking-tight shadow-[0_4px_24px_rgba(46,91,255,0.3)] hover:scale-[1.02] active:scale-95 transition-all"
-              >
-                {t.settings.saveConfig}
-              </button>
-            </div>
-          </div>
+          </Animate>
         </div>
-      </main>
+      </div>
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </AppLayout>
   )
 }

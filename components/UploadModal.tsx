@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { SUPPLIERS, SESSION_KEY, type Supplier } from '@/lib/suppliers'
+import { startExtraction } from '@/lib/quote/store'
 
 const ACCEPTED = ['.pdf', '.dwg', '.ifc', '.rvt']
 
@@ -41,12 +42,13 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
 
   // ── Step 2: launch analysis ───────────────────────────────────────────────
   const launch = () => {
+    if (!file) return
     setLaunching(true)
     sessionStorage.setItem(SESSION_KEY, selectedId)
-    setTimeout(() => {
-      onClose()
-      router.push('/processing')
-    }, 700)
+    // Kick off the real extraction. /processing subscribes to its state.
+    startExtraction(file)
+    onClose()
+    router.push('/processing')
   }
 
   const selectedSupplier = SUPPLIERS.find(s => s.id === selectedId)!
@@ -66,28 +68,33 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(6,14,32,0.88)', backdropFilter: 'blur(14px)' }}
+      style={{ background: 'rgba(5,5,5,0.82)', backdropFilter: 'blur(14px)' }}
       onClick={(e) => { if (e.target === e.currentTarget && !launching) onClose() }}
     >
       <div
-        className={`relative rounded-2xl border border-white/10 shadow-2xl overflow-hidden transition-all duration-300 ${
+        className={`relative rounded-2xl bg-surface-container border border-outline-variant/20 shadow-2xl overflow-hidden transition-all duration-300 ${
           step === 1 ? 'w-full max-w-lg' : 'w-full max-w-2xl'
         }`}
-        style={{ background: 'rgba(15,25,48,0.97)', animation: 'modal-in 0.25s ease-out' }}
+        style={{ animation: 'modal-in 0.25s ease-out' }}
       >
+        <span className="absolute top-3 left-3 w-4 h-4 border-l border-t border-white/15 pointer-events-none" />
+        <span className="absolute top-3 right-3 w-4 h-4 border-r border-t border-white/15 pointer-events-none" />
+        <span className="absolute bottom-3 left-3 w-4 h-4 border-l border-b border-white/15 pointer-events-none" />
+        <span className="absolute bottom-3 right-3 w-4 h-4 border-r border-b border-white/15 pointer-events-none" />
+        <div className="absolute inset-0 hero-grid-fine opacity-25 pointer-events-none" />
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-8 pt-7 pb-0">
+        <div className="relative z-10 flex items-center justify-between px-8 pt-7 pb-0">
           <div>
             {/* Step indicator */}
             <div className="flex items-center gap-3 mb-1.5">
               <div className="flex items-center gap-1.5">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${step >= 1 ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant'}`}>1</div>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${step >= 1 ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>1</div>
                 <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${step === 1 ? 'text-primary' : 'text-on-surface-variant'}`}>Upload</span>
               </div>
               <div className={`h-px w-6 transition-colors ${step === 2 ? 'bg-primary' : 'bg-outline-variant/30'}`} />
               <div className="flex items-center gap-1.5">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${step === 2 ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant'}`}>2</div>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${step === 2 ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>2</div>
                 <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${step === 2 ? 'text-primary' : 'text-on-surface-variant'}`}>Choose Supplier</span>
               </div>
             </div>
@@ -106,7 +113,7 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
 
         {/* ── Step 1: Upload ───────────────────────────────────────────────── */}
         {step === 1 && (
-          <div className="p-8">
+          <div className="relative z-10 p-8">
             <div
               onDrop={onDrop}
               onDragOver={onDragOver}
@@ -120,12 +127,12 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
             >
               {dragging && (
                 <div className="absolute inset-0 rounded-xl pointer-events-none"
-                  style={{ background: 'radial-gradient(circle at 50% 50%, rgba(46,91,255,0.15), transparent 70%)' }}
+                  style={{ background: 'radial-gradient(circle at 50% 50%, rgba(212,255,58,0.15), transparent 70%)' }}
                 />
               )}
               <div className={`w-20 h-20 rounded-2xl flex items-center justify-center border transition-all duration-300 ${
                 dragging
-                  ? 'bg-primary/20 border-primary/40 shadow-[0_0_30px_rgba(46,91,255,0.3)] scale-110'
+                  ? 'bg-primary/20 border-primary/40 shadow-[0_0_30px_rgba(212,255,58,0.3)] scale-110'
                   : 'bg-primary-container/20 border-primary/20'
               }`}>
                 <span
@@ -160,7 +167,7 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
 
         {/* ── Step 2: Supplier selection ───────────────────────────────────── */}
         {step === 2 && (
-          <div className="p-8">
+          <div className="relative z-10 p-8">
             {/* File confirmed */}
             <div className="flex items-center gap-3 mb-7 px-4 py-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
               <span className="material-symbols-outlined text-emerald-400 text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
@@ -190,20 +197,20 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
                     onClick={() => setSelectedId(s.id)}
                     className={`relative flex-shrink-0 w-40 p-4 rounded-2xl border text-left transition-all duration-200 ${
                       isSelected
-                        ? 'border-primary bg-surface-container shadow-[0_0_20px_rgba(46,91,255,0.2)]'
-                        : 'border-white/5 bg-surface-container-high hover:border-primary/30'
+                        ? 'border-primary bg-surface-container-high shadow-[0_0_20px_rgba(212,255,58,0.2)]'
+                        : 'border-white/5 bg-surface-container-low hover:border-primary/30 hover:bg-surface-container-high'
                     }`}
                   >
                     {/* Checkmark */}
                     {isSelected && (
                       <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                        <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1", fontSize: '12px' }}>check</span>
+                        <span className="material-symbols-outlined text-on-primary" style={{ fontVariationSettings: "'FILL' 1", fontSize: '12px' }}>check</span>
                       </div>
                     )}
 
                     {/* Avatar */}
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 font-headline font-black text-xs transition-colors ${
-                      isSelected ? 'bg-primary text-white' : 'bg-surface-container text-on-surface'
+                      isSelected ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface'
                     }`}>
                       {s.initials}
                     </div>
@@ -232,7 +239,7 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
 
             {/* Selected summary + Launch button */}
             <div className="mt-6 flex items-center gap-4">
-              <div className="flex-1 px-4 py-3 rounded-xl bg-surface-container border border-white/5">
+              <div className="flex-1 px-4 py-3 rounded-xl bg-surface-container-low border border-white/5">
                 <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">Selected Supplier</p>
                 <p className="text-sm font-headline font-bold text-on-surface mt-0.5">
                   {selectedSupplier.name}
@@ -243,7 +250,7 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
               <button
                 onClick={launch}
                 disabled={launching}
-                className="flex items-center gap-2 px-6 py-3 bg-primary-container text-on-primary-container font-headline font-bold rounded-xl hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20 disabled:opacity-60 disabled:scale-100 shrink-0"
+                className="group flex items-center gap-2 px-6 py-3 bg-primary text-on-primary font-headline font-black uppercase tracking-[0.15em] text-sm rounded-xl hover:shadow-[0_0_30px_rgba(212,255,58,0.45)] active:scale-95 transition-all disabled:opacity-60 disabled:scale-100 shrink-0"
               >
                 {launching ? (
                   <>

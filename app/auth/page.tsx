@@ -43,11 +43,11 @@ export default function AuthPage() {
         <section className="hidden lg:flex flex-col justify-center relative relative">
           <Animate variant="fade-up" delay={0}>
             <Link href="/" className="inline-flex items-center gap-3 mb-10 group cursor-pointer transition-transform hover:scale-[1.02]">
-              <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/30 group-hover:bg-primary/30 transition-colors shadow-[0_0_30px_rgba(46,91,255,0.2)]">
-                <span className="material-symbols-outlined text-primary text-2xl">architecture</span>
+              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 group-hover:bg-white/15 transition-colors">
+                <span className="material-symbols-outlined text-on-surface text-2xl">architecture</span>
               </div>
               <span className="font-headline font-bold text-3xl tracking-tight text-white">
-                Construct.AI
+                Digital Foreman
               </span>
             </Link>
           </Animate>
@@ -75,7 +75,7 @@ export default function AuthPage() {
 
           <Animate variant="fade-up" delay={400}>
             <div className="relative rounded-3xl overflow-hidden border border-outline-variant/20 bg-surface-container/30 backdrop-blur-md p-6 group transition-all hover:bg-surface-container/40">
-              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(at_0%_0%,#2e5bff_0px,transparent_50%),radial-gradient(at_100%_100%,#b8c3ff_0px,transparent_50%)] pointer-events-none group-hover:opacity-20 transition-opacity" />
+              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(at_0%_0%,#d4ff3a_0px,transparent_50%),radial-gradient(at_100%_100%,#e8ff7a_0px,transparent_50%)] pointer-events-none group-hover:opacity-20 transition-opacity" />
               <div className="relative z-10 flex gap-5 items-center">
                 <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 shrink-0">
                   <span className="material-symbols-outlined text-primary text-3xl">security</span>
@@ -230,7 +230,7 @@ export default function AuthPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full relative mt-8 rounded-xl bg-primary text-on-primary py-5 font-headline font-extrabold text-[14px] uppercase tracking-[0.2em] hover:bg-primary-fixed active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100 transition-all overflow-hidden group shadow-[0_0_20px_rgba(46,91,255,0.3)] hover:shadow-[0_0_30px_rgba(46,91,255,0.5)]"
+                  className="w-full relative mt-8 rounded-xl bg-primary text-on-primary py-5 font-headline font-extrabold text-[14px] uppercase tracking-[0.2em] hover:bg-primary-fixed active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100 transition-all overflow-hidden group shadow-[0_0_20px_rgba(212,255,58,0.3)] hover:shadow-[0_0_30px_rgba(212,255,58,0.5)]"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
                   <span className="relative z-10 flex items-center justify-center gap-3">

@@ -8,14 +8,14 @@ export const en = {
   },
   footer: {
     tagline: 'BUILT FOR BUILDERS.',
-    copyright: '© 2024 CONSTRUCT.AI.',
+    copyright: '© 2026 Digital Foreman.',
     docs: 'Docs',
     status: 'System Status',
     security: 'Security',
     certified: 'Trusted Standard',
   },
   auth: {
-    heroKicker: 'CONSTRUCT.AI ACCESS',
+    heroKicker: 'DIGITAL FOREMAN ACCESS',
     heroTitle: 'Secure sign-in for your team.',
     heroDesc: 'Sign in or create an account to reach your dashboard.',
     loginTab: 'Sign In',
@@ -35,11 +35,11 @@ export const en = {
     errorConfirm: 'Passwords do not match.',
   },
   landing: {
-    badge: 'Live Now: Blueprint Engine',
-    heroTitle: 'Turn construction PDFs into',
-    heroBold: 'quotes in seconds',
+    badge: 'Now live — CCTP → quote in minutes',
+    heroTitle: 'Stop doing takeoffs by hand.',
+    heroBold: 'Your quote in 3 minutes.',
     heroDesc:
-      'Upload your plans and get a clear quote fast. Simple, accurate, and ready to buy.',
+      'Drop a CCTP, get a compliant quote — line by line, priced, ready to send. No more nights lost on spec sheets.',
     startTrial: 'Start Free Trial',
     watchDemo: 'Watch Demo',
     accuracyCheck: 'Accuracy Check',

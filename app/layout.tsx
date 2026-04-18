@@ -16,9 +16,9 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Digital Foreman | CONSTRUCT.AI',
+  title: 'Digital Foreman — CCTP → devis en quelques minutes',
   description:
-    'Turn construction PDFs into quotes in seconds. Smart tools, live prices, and clear delivery timing.',
+    'Déposez votre CCTP, recevez un devis conforme, poste par poste. Plus de nuits blanches sur les métrés.',
 }
 
 export default function RootLayout({

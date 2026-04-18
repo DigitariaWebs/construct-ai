@@ -1,283 +1,250 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
-import UploadModal from '@/components/UploadModal'
+import Modal from '@/components/Modal'
 import Toast from '@/components/Toast'
 import Animate from '@/components/Animate'
-import { useLanguage } from '@/contexts/LanguageContext'
+import UploadModal from '@/components/UploadModal'
 
-const blueprints = [
-  {
-    name: 'North_Tower_Foundation.dwg',
-    type: '3D Model',
-    updated: '2 mins ago',
-    health: 100,
-    healthColor: 'bg-emerald-500',
-    icon: 'account_tree',
-  },
-  {
-    name: 'Heating_Cooling_Routes.ifc',
-    type: 'Heating/Cooling',
-    updated: '14 hours ago',
-    health: 85,
-    healthColor: 'bg-primary-container',
-    icon: 'analytics',
-  },
-  {
-    name: 'Load_Check_Report.pdf',
-    type: 'Report',
-    updated: 'Yesterday',
-    health: 40,
-    healthColor: 'bg-tertiary',
-    icon: 'description',
-  },
-  {
-    name: 'Skyline_Pavilion_v3.pdf',
-    type: 'Building Plan',
-    updated: '2 days ago',
-    health: 95,
-    healthColor: 'bg-emerald-500',
-    icon: 'picture_as_pdf',
-  },
-  {
-    name: 'Supplier_Timeline.csv',
-    type: 'Buying',
-    updated: '3 days ago',
-    health: 60,
-    healthColor: 'bg-primary-container',
-    icon: 'table_chart',
-  },
+type QuoteStatus = 'finalisé' | 'brouillon' | 'envoyé' | 'archivé'
+
+type Quote = {
+  id: string
+  projectName: string
+  lot: string
+  date: string
+  supplier: string
+  supplierInitials: string
+  status: QuoteStatus
+  lineItems: number
+  totalHT: number
+  sector: string
+}
+
+const MOCK_QUOTES: Quote[] = [
+  { id: 'q-001', projectName: 'Résidence Les Pins — Réhabilitation',  lot: 'Lot 09 — Plomberie · Chauffage · VMC', date: '10/04/2026', supplier: 'CDO',         supplierInitials: 'CDO', status: 'finalisé', lineItems: 24, totalHT: 28450,  sector: 'Plomberie' },
+  { id: 'q-002', projectName: 'Copropriété Bellevue — Neuf',          lot: 'Lot 09 — Plomberie · Sanitaires',      date: '05/04/2026', supplier: 'Pim Plastic',  supplierInitials: 'PP',  status: 'envoyé',   lineItems: 31, totalHT: 42180,  sector: 'Plomberie' },
+  { id: 'q-003', projectName: 'TERRALIA Verdun — 27 logements',       lot: 'Lot 09 — Plomberie · Chauffage · VMC', date: '28/03/2026', supplier: 'IA Optimisé',  supplierInitials: 'IA',  status: 'brouillon',lineItems: 47, totalHT: 89600,  sector: 'CVC'       },
+  { id: 'q-004', projectName: 'Mont Saint Martin — 32 logements',     lot: 'Lot 09 — Plomberie · CVC',             date: '15/03/2026', supplier: 'CDO',         supplierInitials: 'CDO', status: 'finalisé', lineItems: 38, totalHT: 67340,  sector: 'Plomberie' },
+  { id: 'q-005', projectName: 'HLM Quartier Nord — Remplacement',     lot: 'Lot 09 — Chauffage gaz individuel',    date: '20/02/2026', supplier: 'Marplin',     supplierInitials: 'MP',  status: 'archivé',  lineItems: 12, totalHT: 15200,  sector: 'CVC'       },
+  { id: 'q-006', projectName: 'Bureaux SNC RCT-EST Jarny',            lot: 'Lot 09 — Plancher chauffant collectif',date: '08/02/2026', supplier: 'CDO',         supplierInitials: 'CDO', status: 'envoyé',   lineItems: 19, totalHT: 23760,  sector: 'CVC'       },
+  { id: 'q-007', projectName: 'Résidence Miribel Verdun',             lot: 'Lot 09 — Plomberie · VMC hygro B',     date: '30/01/2026', supplier: 'Pim Plastic',  supplierInitials: 'PP',  status: 'finalisé', lineItems: 29, totalHT: 51890,  sector: 'Plomberie' },
+  { id: 'q-008', projectName: 'Maison individuelle Pompey',           lot: 'Lot 09 — Plomberie neuf',              date: '15/01/2026', supplier: 'Richardson',  supplierInitials: 'RC',  status: 'brouillon',lineItems: 16, totalHT: 8940,   sector: 'Plomberie' },
 ]
 
-const fleet = [
-  { name: 'Crane 01 - Alpha',  status: 'Operational', dot: 'bg-emerald-400', glow: 'shadow-[0_0_8px_rgba(52,211,153,0.6)]', active: true },
-  { name: 'Excavator X-4',     status: 'In-Use',       dot: 'bg-emerald-400', glow: 'shadow-[0_0_8px_rgba(52,211,153,0.6)]', active: true },
-  { name: 'Drone Unit 09',     status: 'Charging',     dot: 'bg-amber-400',   glow: '',                                       active: false },
-  { name: 'Concrete Pump P-2', status: 'Standby',      dot: 'bg-slate-400',   glow: '',                                       active: false },
-]
+const STATUS_CONFIG: Record<QuoteStatus, { label: string; classes: string; dot: string }> = {
+  finalisé:  { label: 'Finalisé',  classes: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20', dot: 'bg-emerald-500'       },
+  brouillon: { label: 'Brouillon', classes: 'bg-surface-container text-on-surface-variant border border-outline-variant/20', dot: 'bg-on-surface-variant' },
+  envoyé:    { label: 'Envoyé',    classes: 'bg-primary/10 text-primary border border-primary/20',             dot: 'bg-primary'           },
+  archivé:   { label: 'Archivé',   classes: 'bg-surface-container text-outline border border-outline-variant/10', dot: 'bg-outline'        },
+}
+
+function fmtEur(n: number) {
+  return n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })
+}
 
 export default function ProjectsPage() {
-  const { t } = useLanguage()
   const router = useRouter()
-  const [showUpload, setShowUpload] = useState(false)
-  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'info' | 'error' } | null>(null)
+  const [quotes, setQuotes]             = useState<Quote[]>(MOCK_QUOTES)
+  const [search, setSearch]             = useState('')
+  const [filterStatus, setFilterStatus] = useState<QuoteStatus | 'tous'>('tous')
+  const [filterSector, setFilterSector] = useState<'tous' | 'Plomberie' | 'CVC'>('tous')
+  const [viewMode, setViewMode]         = useState<'table' | 'grid'>('table')
+  const [deleteTarget, setDeleteTarget] = useState<Quote | null>(null)
+  const [showUpload, setShowUpload]     = useState(false)
+  const [toast, setToast]               = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
+
+  const filtered = quotes.filter(q => {
+    const matchSearch  = q.projectName.toLowerCase().includes(search.toLowerCase()) || q.lot.toLowerCase().includes(search.toLowerCase())
+    const matchStatus  = filterStatus === 'tous' || q.status === filterStatus
+    const matchSector  = filterSector === 'tous' || q.sector === filterSector
+    return matchSearch && matchStatus && matchSector
+  })
+
+  const handleDelete    = (q: Quote) => { setQuotes(p => p.filter(x => x.id !== q.id)); setDeleteTarget(null); setToast({ message: `Devis "${q.projectName}" supprimé.`, type: 'info' }) }
+  const handleDuplicate = (q: Quote) => { const copy = { ...q, id: `q-${Date.now()}`, projectName: `${q.projectName} (Copie)`, status: 'brouillon' as QuoteStatus, date: new Date().toLocaleDateString('fr-FR') }; setQuotes(p => [copy, ...p]); setToast({ message: 'Devis dupliqué.', type: 'success' }) }
+
+  const totalHT    = quotes.reduce((s, q) => s + q.totalHT, 0)
+  const finalisés  = quotes.filter(q => q.status === 'finalisé').length
+  const brouillons = quotes.filter(q => q.status === 'brouillon').length
 
   return (
     <AppLayout>
+      <div className="pb-32 space-y-8">
 
-      <main className="pb-32 px-6 max-w-7xl mx-auto space-y-12 mt-8">
-
-        {/* Hero Upload Canvas */}
-        <Animate variant="fade-up" as="section">
-          <div className="mb-8">
-            <span className="text-primary font-headline font-bold tracking-widest text-[10px] uppercase">
-              {t.projects.workspaceLabel}
-            </span>
-            <h1 className="text-4xl md:text-5xl font-headline font-black tracking-tighter text-on-surface mt-1">
-              {t.projects.pageTitle}
-            </h1>
-            <p className="text-on-surface-variant max-w-2xl mt-2">
-              {t.projects.pageDesc}
-            </p>
-          </div>
-
-          <button
-            onClick={() => setShowUpload(true)}
-            className="group relative w-full min-h-[320px] rounded-xl border border-white/5 flex flex-col items-center justify-center p-8 transition-all duration-700 hover:border-primary/30"
-            style={{
-              background: 'rgba(45,52,72,0.4)',
-              backdropFilter: 'blur(12px)',
-            }}
-          >
-            <div className="absolute inset-0 rounded-xl pointer-events-none"
-              style={{ background: 'radial-gradient(circle at 50% 50%, rgba(46,91,255,0.08), transparent 70%)' }}
-            />
-            <div className="flex flex-col items-center gap-6">
-              <div className="w-20 h-20 rounded-2xl bg-primary-container/20 flex items-center justify-center border border-primary/20 shadow-[0_0_30px_rgba(46,91,255,0.2)] group-hover:scale-110 transition-transform duration-500">
-                <span className="material-symbols-outlined text-4xl text-primary-container" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  cloud_upload
-                </span>
-              </div>
-              <div className="text-center">
-                <h3 className="font-headline font-bold text-2xl tracking-tight text-white mb-1">
-                  {t.projects.dragDrop}
-                </h3>
-                <p className="text-on-surface-variant text-sm tracking-wide uppercase">
-                  {t.projects.supportedFormats}
-                </p>
-              </div>
-              <div className="px-8 py-3 bg-primary-container text-white font-headline font-extrabold rounded-xl shadow-[0_0_20px_rgba(46,91,255,0.3)] group-hover:scale-105 active:scale-95 transition-transform text-sm uppercase tracking-widest">
-                {t.projects.browseWorkspace}
-              </div>
-            </div>
-          </button>
-        </Animate>
-
-        {/* Bento Grid: Foreman Insight + Fleet */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Foreman Insight (2 cols) */}
-          <Animate variant="slide-left" className="lg:col-span-2 relative overflow-hidden rounded-xl p-8 bg-surface-container border border-white/5 shadow-xl">
-            <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary-container/20 blur-[80px] pointer-events-none" />
-            <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-tertiary-container/10 blur-[60px] pointer-events-none" />
-            <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-lg bg-primary-container shadow-[0_0_15px_rgba(46,91,255,0.4)]">
-                  <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>
-                    psychology
-                  </span>
-                </div>
-                <h3 className="font-headline font-bold text-xl tracking-tight text-white uppercase">
-                  {t.projects.foremanInsight}
-                </h3>
-              </div>
-              <div className="space-y-6">
-                <div className="p-4 rounded-lg border-l-4 border-primary" style={{ background: 'rgba(46,91,255,0.1)' }}>
-                  <p className="text-primary font-semibold text-sm mb-2 uppercase tracking-widest">
-                    {t.projects.activeAlert}
-                  </p>
-                  <p className="text-on-surface text-base leading-relaxed">
-                    {t.projects.alertText}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <span className="px-4 py-2 rounded-full bg-surface-container-high border border-white/5 text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                    {t.projects.conflictsFound}
-                  </span>
-                  <span className="px-4 py-2 rounded-full bg-surface-container-high border border-white/5 text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                    {t.projects.siteNorth}
-                  </span>
-                  <button
-                    onClick={() => setToast({ message: t.projects.toastConflict, type: 'info' })}
-                    className="px-4 py-2 rounded-full bg-primary-container/20 border border-primary/20 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary-container/30 transition-colors"
-                  >
-                    {t.projects.resolveConflicts}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </Animate>
-
-          {/* Fleet Status */}
-          <Animate variant="slide-right" delay={80} className="rounded-xl p-8 bg-surface-container-high border border-white/5 flex flex-col justify-between">
+        <Animate variant="fade-up" as="section" className="pt-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <div className="flex justify-between items-start mb-8">
-                <h3 className="font-headline font-bold text-lg tracking-tight text-white uppercase">
-                  {t.projects.activeFleet}
-                </h3>
-                <span className="material-symbols-outlined text-primary">conveyor_belt</span>
-              </div>
-              <div className="space-y-4">
-                {fleet.map((f, i) => (
-                  <div key={f.name} className={`flex items-center justify-between group cursor-pointer ${!f.active ? 'opacity-50' : ''}`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${f.dot} ${f.glow}`} />
-                      <span className="text-sm font-medium text-on-surface">{f.name}</span>
-                    </div>
-                    <span className="text-xs text-on-surface-variant group-hover:text-white transition-colors">
-                      {t.projects.fleetStatuses[i]}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <span className="text-primary font-headline font-bold tracking-widest text-[10px] uppercase">Mes devis</span>
+              <h1 className="text-4xl md:text-5xl font-headline font-black tracking-tighter text-on-surface mt-1">{quotes.length} devis</h1>
+              <p className="text-on-surface-variant mt-1 text-sm">{finalisés} finalisés · {brouillons} brouillons</p>
             </div>
-            <button
-              onClick={() => setToast({ message: t.projects.toastFleet, type: 'info' })}
-              className="w-full mt-8 py-3 rounded-lg border border-primary/20 text-primary font-bold text-xs uppercase tracking-widest hover:bg-primary/5 transition-all"
-            >
-              {t.projects.viewFleetMap}
-            </button>
-          </Animate>
-        </section>
-
-        {/* Recent Blueprints Table */}
-        <Animate variant="fade-up" as="section" className="space-y-6">
-          <div className="flex justify-between items-end">
-            <h3 className="font-headline font-black text-2xl tracking-tighter text-white uppercase">
-              {t.projects.recentBlueprints}
-            </h3>
-            <button
-              onClick={() => setToast({ message: t.projects.toastArchive, type: 'info' })}
-              className="text-primary text-xs font-bold uppercase tracking-widest hover:underline underline-offset-8"
-            >
-              {t.projects.expandArchive}
+            <button onClick={() => setShowUpload(true)} className="whitespace-nowrap bg-primary-container text-on-primary-container px-8 py-4 rounded-xl font-headline font-black uppercase tracking-widest shadow-lg shadow-primary-container/20 hover:scale-[1.02] active:scale-95 transition-all duration-300 flex items-center gap-2">
+              <span className="material-symbols-outlined text-xl">add</span>Nouveau devis
             </button>
           </div>
+        </Animate>
 
-          <div className="bg-surface-container rounded-xl border border-white/5 overflow-hidden">
-            {/* Table header */}
-            <div className="grid grid-cols-12 px-6 py-4 border-b border-white/5 bg-surface-container-high/30 text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">
-              <div className="col-span-5">{t.projects.tableHeaders.name}</div>
-              <div className="col-span-2">{t.projects.tableHeaders.type}</div>
-              <div className="col-span-2">{t.projects.tableHeaders.updated}</div>
-              <div className="col-span-2">{t.projects.tableHeaders.health}</div>
-              <div className="col-span-1 text-right">{t.projects.tableHeaders.action}</div>
-            </div>
-
-            <div className="divide-y divide-white/5">
-              {blueprints.map((b) => (
-                <div
-                  key={b.name}
-                  className="grid grid-cols-12 px-6 py-5 items-center hover:bg-white/5 transition-colors group cursor-pointer"
-                  onClick={() => router.push('/processing')}
-                >
-                  <div className="col-span-5 flex items-center gap-4">
-                    <span className="material-symbols-outlined text-primary/60 group-hover:text-primary transition-colors">
-                      {b.icon}
-                    </span>
-                    <span className="font-semibold text-sm text-on-surface truncate">{b.name}</span>
-                  </div>
-                  <div className="col-span-2 text-xs text-on-surface-variant">{b.type}</div>
-                  <div className="col-span-2 text-xs text-on-surface-variant">{b.updated}</div>
-                  <div className="col-span-2">
-                    <div className="w-20 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
-                      <div className={`h-full ${b.healthColor} rounded-full`} style={{ width: `${b.health}%` }} />
-                    </div>
-                  </div>
-                  <div className="col-span-1 text-right">
-                    <button
-                      className="material-symbols-outlined text-slate-400 hover:text-white transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setToast({ message: `Actions for ${b.name}`, type: 'info' })
-                      }}
-                    >
-                      more_vert
-                    </button>
-                  </div>
+        <Animate variant="fade-up" delay={60} as="section">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Total devis',      value: quotes.length.toString(), icon: 'description',  color: 'text-primary'           },
+              { label: 'Finalisés',        value: finalisés.toString(),     icon: 'check_circle',  color: 'text-emerald-400'       },
+              { label: 'Brouillons',       value: brouillons.toString(),    icon: 'edit_note',     color: 'text-on-surface-variant' },
+              { label: 'Montant total HT', value: fmtEur(totalHT),         icon: 'payments',      color: 'text-tertiary'          },
+            ].map((s, i) => (
+              <Animate key={s.label} variant="scale-up" delay={i * 60} className="bg-surface-container rounded-2xl p-5 border border-outline-variant/10">
+                <div className="flex justify-between items-start mb-3">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{s.label}</span>
+                  <span className={`material-symbols-outlined text-sm ${s.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
                 </div>
-              ))}
+                <div className={`text-2xl font-headline font-black tracking-tight ${s.color}`}>{s.value}</div>
+              </Animate>
+            ))}
+          </div>
+        </Animate>
+
+        <Animate variant="fade-up" delay={80} as="section">
+          <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
+            <div className="relative flex-1 max-w-sm">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+              <input type="text" placeholder="Rechercher un projet…" value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-surface-container border border-outline-variant/20 rounded-xl pl-9 pr-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant" />
+            </div>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as QuoteStatus | 'tous')} className="bg-surface-container border border-outline-variant/20 rounded-xl px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary/40 transition-all">
+              <option value="tous">Tous les statuts</option>
+              <option value="finalisé">Finalisé</option>
+              <option value="envoyé">Envoyé</option>
+              <option value="brouillon">Brouillon</option>
+              <option value="archivé">Archivé</option>
+            </select>
+            <select value={filterSector} onChange={e => setFilterSector(e.target.value as typeof filterSector)} className="bg-surface-container border border-outline-variant/20 rounded-xl px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary/40 transition-all">
+              <option value="tous">Tous les secteurs</option>
+              <option value="Plomberie">Plomberie</option>
+              <option value="CVC">CVC / Chauffage</option>
+            </select>
+            <div className="ml-auto flex items-center gap-1 bg-surface-container rounded-xl p-1 border border-outline-variant/10">
+              <button onClick={() => setViewMode('table')} className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}><span className="material-symbols-outlined text-sm">table_rows</span></button>
+              <button onClick={() => setViewMode('grid')}  className={`p-2 rounded-lg transition-all ${viewMode === 'grid'  ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}><span className="material-symbols-outlined text-sm">grid_view</span></button>
             </div>
           </div>
         </Animate>
 
-        {/* Stats strip */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: t.projects.statsLabels[0], value: '47', icon: 'folder_open', color: 'text-primary' },
-            { label: t.projects.statsLabels[1], value: '14', icon: 'foundation', color: 'text-primary' },
-            { label: t.projects.statsLabels[2], value: '3', icon: 'pending', color: 'text-tertiary' },
-            { label: t.projects.statsLabels[3], value: '28', icon: 'verified', color: 'text-emerald-400' },
-          ].map((s, i) => (
-            <Animate key={s.label} variant="scale-up" delay={i * 80} className="bg-surface-container rounded-xl p-6 border border-white/5 flex flex-col gap-2">
-              <span className={`material-symbols-outlined ${s.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>
-                {s.icon}
-              </span>
-              <div className={`text-3xl font-headline font-black tracking-tighter ${s.color}`}>{s.value}</div>
-              <div className="text-xs text-on-surface-variant uppercase tracking-widest">{s.label}</div>
-            </Animate>
-          ))}
-        </section>
-      </main>
+        {viewMode === 'table' && (
+          <Animate variant="fade-up" delay={100} as="section">
+            {filtered.length === 0 ? (
+              <div className="bg-surface-container-low rounded-2xl border border-white/5 p-16 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4"><span className="material-symbols-outlined text-primary text-3xl">description</span></div>
+                <h3 className="font-headline font-bold text-xl text-on-surface mb-2">{search ? 'Aucun résultat' : 'Aucun devis'}</h3>
+                <p className="text-on-surface-variant text-sm max-w-xs mb-6">{search ? 'Essayez d\'autres termes.' : 'Créez votre premier devis en uploadant un CCTP.'}</p>
+                {!search && <button onClick={() => setShowUpload(true)} className="px-6 py-3 bg-primary-container text-on-primary-container font-bold rounded-xl hover:shadow-[0_0_20px_rgba(212,255,58,0.3)] transition-all">Nouveau devis</button>}
+              </div>
+            ) : (
+              <div className="bg-surface-container-low rounded-2xl border border-white/5 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-white/5 bg-surface-container">
+                        <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Projet</th>
+                        <th className="px-4 py-4 text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Date</th>
+                        <th className="px-4 py-4 text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Fournisseur</th>
+                        <th className="px-4 py-4 text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Postes</th>
+                        <th className="px-4 py-4 text-[10px] uppercase tracking-widest font-bold text-on-surface-variant text-right">Total HT</th>
+                        <th className="px-4 py-4 text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Statut</th>
+                        <th className="px-4 py-4 text-[10px] uppercase tracking-widest font-bold text-on-surface-variant text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {filtered.map((q, i) => {
+                        const sc = STATUS_CONFIG[q.status]
+                        return (
+                          <Animate key={q.id} as="tr" variant="fade-up" delay={i * 30} className="hover:bg-surface-container-high transition-colors group cursor-pointer" onClick={() => router.push('/quote')}>
+                            <td className="px-6 py-4">
+                              <div className="font-semibold text-sm text-on-surface group-hover:text-primary transition-colors">{q.projectName}</div>
+                              <div className="text-[10px] text-on-surface-variant mt-0.5">{q.lot}</div>
+                            </td>
+                            <td className="px-4 py-4"><span className="text-sm font-mono text-on-surface-variant">{q.date}</span></td>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center font-headline font-black text-[8px]">{q.supplierInitials}</div>
+                                <span className="text-sm text-on-surface-variant">{q.supplier}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4"><span className="text-sm font-mono text-on-surface-variant">{q.lineItems}</span></td>
+                            <td className="px-4 py-4 text-right"><span className="text-sm font-mono font-bold text-on-surface">{fmtEur(q.totalHT)}</span></td>
+                            <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${sc.classes}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />{sc.label}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center" onClick={e => e.stopPropagation()}>
+                              <div className="flex items-center justify-center gap-1">
+                                <Link href="/quote" className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all"><span className="material-symbols-outlined text-sm">visibility</span></Link>
+                                <button onClick={() => handleDuplicate(q)} className="p-1.5 rounded-lg text-on-surface-variant hover:text-secondary hover:bg-secondary/10 transition-all"><span className="material-symbols-outlined text-sm">content_copy</span></button>
+                                <button onClick={() => setDeleteTarget(q)} className="p-1.5 rounded-lg text-on-surface-variant hover:text-red-400 hover:bg-red-500/10 transition-all"><span className="material-symbols-outlined text-sm">delete</span></button>
+                              </div>
+                            </td>
+                          </Animate>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </Animate>
+        )}
 
-      {/* FAB */}
-      <button
-        onClick={() => setShowUpload(true)}
-        className="fixed bottom-24 right-6 md:bottom-12 md:right-12 h-16 w-16 bg-primary-container rounded-full flex items-center justify-center text-white shadow-[0_8px_30px_rgba(46,91,255,0.4)] hover:scale-110 active:scale-95 transition-all z-40"
-      >
-        <span className="material-symbols-outlined text-3xl">add</span>
-      </button>
+        {viewMode === 'grid' && (
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map((q, i) => {
+              const sc = STATUS_CONFIG[q.status]
+              return (
+                <Animate key={q.id} variant="fade-up" delay={i * 50}>
+                  <div className="bg-surface-container rounded-2xl border border-outline-variant/10 p-6 hover:border-primary/30 hover:-translate-y-1 transition-all duration-300 cursor-pointer group" onClick={() => router.push('/quote')}>
+                    <div className="flex justify-between items-start mb-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${sc.classes}`}><span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />{sc.label}</span>
+                      <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => handleDuplicate(q)} className="p-1 rounded-lg text-on-surface-variant hover:text-secondary transition-colors"><span className="material-symbols-outlined text-sm">content_copy</span></button>
+                        <button onClick={() => setDeleteTarget(q)}  className="p-1 rounded-lg text-on-surface-variant hover:text-red-400 transition-colors"><span className="material-symbols-outlined text-sm">delete</span></button>
+                      </div>
+                    </div>
+                    <h3 className="font-headline font-bold text-base text-on-surface group-hover:text-primary transition-colors mb-1">{q.projectName}</h3>
+                    <p className="text-[11px] text-on-surface-variant mb-4">{q.lot}</p>
+                    <div className="text-3xl font-headline font-black tracking-tight text-on-surface mb-1">{fmtEur(q.totalHT)}</div>
+                    <p className="text-[10px] text-on-surface-variant mb-4">HT · {q.lineItems} postes</p>
+                    <div className="flex items-center justify-between text-[10px] text-on-surface-variant border-t border-white/5 pt-4">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-md bg-surface-container-high flex items-center justify-center font-headline font-black text-[7px]">{q.supplierInitials}</div>
+                        <span>{q.supplier}</span>
+                      </div>
+                      <span className="font-mono">{q.date}</span>
+                    </div>
+                  </div>
+                </Animate>
+              )
+            })}
+          </section>
+        )}
+      </div>
+
+      {deleteTarget && (
+        <Modal title="Supprimer ce devis ?" onClose={() => setDeleteTarget(null)}>
+          <div className="space-y-6">
+            <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-xl">
+              <p className="text-sm text-on-surface font-semibold">{deleteTarget.projectName}</p>
+              <p className="text-xs text-on-surface-variant mt-1">{deleteTarget.lot} · {fmtEur(deleteTarget.totalHT)} HT</p>
+            </div>
+            <p className="text-sm text-on-surface-variant">Cette action est irréversible. Le devis sera définitivement supprimé.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 rounded-xl border border-outline-variant/20 text-on-surface-variant font-bold hover:bg-surface-container-high transition-all">Annuler</button>
+              <button onClick={() => handleDelete(deleteTarget)} className="flex-1 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 font-bold hover:bg-red-500/20 transition-all">Supprimer</button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

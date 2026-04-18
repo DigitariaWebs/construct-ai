@@ -79,12 +79,12 @@ export function generateQuotePdf(rows: PdfRow[]) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
   setTextColor(doc, C.white)
-  doc.text('CONSTRUCT.AI', margin, 30)
+  doc.text('DIGITAL FOREMAN', margin, 30)
 
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
   setTextColor(doc, C.muted)
-  doc.text('DIGITAL FOREMAN PLATFORM', margin, 43)
+  doc.text('DEVIS CCTP · GÉNÉRATION AUTOMATIQUE', margin, 43)
 
   // Badge top-right
   setFill(doc, C.blue)
@@ -349,7 +349,7 @@ export function generateQuotePdf(rows: PdfRow[]) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8)
   setTextColor(doc, C.white)
-  doc.text('CONSTRUCT.AI  ·  Digital Foreman Platform', margin, footerY + 16)
+  doc.text('DIGITAL FOREMAN  ·  digitalforeman.fr', margin, footerY + 16)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7.5)

@@ -9,9 +9,10 @@ interface AnimateProps {
   as?: any;
   style?: React.CSSProperties;
   id?: string;
+  onClick?: React.MouseEventHandler;
 }
 
-export default function Animate({ children, variant = 'fade-up', delay = 0, className = '', as: Component = 'div', style, id }: AnimateProps) {
+export default function Animate({ children, variant = 'fade-up', delay = 0, className = '', as: Component = 'div', style, id, onClick }: AnimateProps) {
   const ref = useRef<Element | null>(null);
   const [inView, setInView] = useState(false);
 
@@ -36,7 +37,7 @@ export default function Animate({ children, variant = 'fade-up', delay = 0, clas
   };
 
   return (
-    <Component ref={ref} id={id} className={variants[variant] + ' ' + className} style={{ ...style, transitionDelay: delay + 'ms' }}>
+    <Component ref={ref} id={id} onClick={onClick} className={variants[variant] + ' ' + className} style={{ ...style, transitionDelay: delay + 'ms' }}>
       {children}
     </Component>
   );
