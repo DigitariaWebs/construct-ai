@@ -184,7 +184,7 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
             </div>
 
             {/* Supplier cards */}
-            <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
               {SUPPLIERS.map(s => {
                 const { diff, pct } = savingsOf(s)
                 const isSelected    = s.id === selectedId
@@ -195,7 +195,7 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
                   <button
                     key={s.id}
                     onClick={() => setSelectedId(s.id)}
-                    className={`relative flex-shrink-0 w-40 p-4 rounded-2xl border text-left transition-all duration-200 ${
+                    className={`relative min-w-0 p-3 rounded-xl border text-left transition-all duration-200 ${
                       isSelected
                         ? 'border-primary bg-surface-container-high shadow-[0_0_20px_rgba(212,255,58,0.2)]'
                         : 'border-white/5 bg-surface-container-low hover:border-primary/30 hover:bg-surface-container-high'
@@ -203,31 +203,31 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
                   >
                     {/* Checkmark */}
                     {isSelected && (
-                      <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                        <span className="material-symbols-outlined text-on-primary" style={{ fontVariationSettings: "'FILL' 1", fontSize: '12px' }}>check</span>
+                      <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                        <span className="material-symbols-outlined text-on-primary" style={{ fontVariationSettings: "'FILL' 1", fontSize: '10px' }}>check</span>
                       </div>
                     )}
 
                     {/* Avatar */}
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 font-headline font-black text-xs transition-colors ${
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 font-headline font-black text-[11px] transition-colors ${
                       isSelected ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface'
                     }`}>
                       {s.initials}
                     </div>
 
-                    <div className="font-headline font-bold text-sm text-on-surface leading-tight">{s.name}</div>
-                    <div className="text-[10px] text-on-surface-variant mt-0.5 mb-3 truncate">{s.sub}</div>
+                    <div className="font-headline font-bold text-[13px] text-on-surface leading-tight truncate">{s.name}</div>
+                    <div className="text-[10px] text-on-surface-variant mt-0.5 mb-2 truncate">{s.sub}</div>
 
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest ${s.tierColor}`}>
+                    <span className={`inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest ${s.tierColor}`}>
                       {s.tier}
                     </span>
 
-                    <div className="mt-3 flex items-center justify-between text-[10px] text-on-surface-variant">
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-on-surface-variant">
                       <span>★ {s.rating}</span>
                       <span>{s.deliveryDays}d</span>
                     </div>
 
-                    <div className={`mt-2 text-[10px] font-bold font-mono ${isBaseline ? 'text-primary' : isCheaper ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <div className={`mt-1.5 text-[10px] font-bold font-mono ${isBaseline ? 'text-primary' : isCheaper ? 'text-emerald-400' : 'text-red-400'}`}>
                       {isBaseline
                         ? '◆ BASELINE'
                         : `${isCheaper ? '▼' : '▲'} ${Math.abs(pct).toFixed(1)}%`}

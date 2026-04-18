@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { extractWithOpenAI } from '@/lib/quote/providers/openai'
 import { extractWithAnthropic } from '@/lib/quote/providers/anthropic'
 import { extractWithGemini } from '@/lib/quote/providers/gemini'
+import { extractWithMock } from '@/lib/quote/providers/mock'
 import { isProviderId, type ProviderId, type ExtractProvider } from '@/lib/quote/providers/types'
 
 export const runtime = 'nodejs'
@@ -11,6 +12,7 @@ const PROVIDERS: Record<ProviderId, ExtractProvider> = {
   openai:    extractWithOpenAI,
   anthropic: extractWithAnthropic,
   gemini:    extractWithGemini,
+  mock:      extractWithMock,
 }
 
 function pickProvider(req: NextRequest, form: FormData): ProviderId {
@@ -20,8 +22,8 @@ function pickProvider(req: NextRequest, form: FormData): ProviderId {
   const fromEnv    = process.env.EXTRACTION_PROVIDER
 
   const formValue = typeof fromForm === 'string' ? fromForm : null
-  const candidate = fromQuery ?? fromHeader ?? formValue ?? fromEnv ?? 'openai'
-  return isProviderId(candidate) ? candidate : 'openai'
+  const candidate = fromQuery ?? fromHeader ?? formValue ?? fromEnv ?? 'mock'
+  return isProviderId(candidate) ? candidate : 'mock'
 }
 
 export async function POST(req: NextRequest) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { Fragment, useState, useMemo, useEffect } from 'react'
 import AppLayout from '@/components/AppLayout'
 import Modal from '@/components/Modal'
 import Toast from '@/components/Toast'
@@ -267,7 +267,36 @@ export default function QuotePage() {
     setDownloading(true)
     setTimeout(() => {
       try {
-        generateQuotePdf(rows)
+        const currentSupplier = SUPPLIERS.find(s => s.id === selectedSupplierId) || SUPPLIERS[0]
+        generateQuotePdf({
+          rows: rows.map(r => ({
+            category: r.category,
+            name: r.name,
+            sub: r.sub,
+            qtyNum: r.qtyNum,
+            qtyUnit: r.qtyUnit,
+            unitNum: r.unitNum,
+          })),
+          project: {
+            name:    extracted?.projectName || 'Devis plomberie',
+            lot:     extracted?.lot         || 'Lot 09 — Plomberie · Chauffage · VMC',
+            client:  extracted?.client      || undefined,
+            summary: extracted?.summary     || undefined,
+          },
+          supplier: {
+            name:         currentSupplier.name,
+            deliveryDays: currentSupplier.deliveryDays,
+          },
+          totals: {
+            materialsHT:  totals.materialsHT,
+            laborHT:      FIXED_MOED_OEUVRE,
+            chantierHT:   FIXED_CHANTIER,
+            subtotalHT:   totals.subtotalHT,
+            vatRate:      TVA_RATE,
+            tva:          totals.tva,
+            totalTTC:     totals.totalTTC,
+          },
+        })
         setToast({ message: 'PDF téléchargé.', type: 'success' })
       } catch {
         setToast({ message: 'Erreur PDF. Veuillez réessayer.', type: 'error' })
@@ -438,8 +467,8 @@ export default function QuotePage() {
                       const catRows = displayRows.map((r, idx) => ({ ...r, idx })).filter(r => r.category === cat)
                       const catTotal = catRows.reduce((s, r) => s + r.qtyNum * r.unitNum, 0)
                       return (
-                        <>
-                          <tr key={`cat-${cat}`}>
+                        <Fragment key={`cat-${cat}`}>
+                          <tr>
                             <td colSpan={5} className="px-4 pt-5 pb-2">
                               <div className="flex items-center justify-between">
                                 <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${colorForCategory(cat)}`}>{cat}</span>
@@ -498,7 +527,7 @@ export default function QuotePage() {
                               </tr>
                             )
                           })}
-                        </>
+                        </Fragment>
                       )
                     })}
                     <tr>

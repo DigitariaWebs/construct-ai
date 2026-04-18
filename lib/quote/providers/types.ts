@@ -1,6 +1,6 @@
 import type { ExtractedQuote } from '../types'
 
-export type ProviderId = 'openai' | 'anthropic' | 'gemini'
+export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'mock'
 
 export type ProviderError =
   | { code: 'missing_key';  message: string }
@@ -15,5 +15,5 @@ export type ProviderResult =
 export type ExtractProvider = (file: File) => Promise<ProviderResult>
 
 export function isProviderId(v: string | null | undefined): v is ProviderId {
-  return v === 'openai' || v === 'anthropic' || v === 'gemini'
+  return v === 'openai' || v === 'anthropic' || v === 'gemini' || v === 'mock'
 }
