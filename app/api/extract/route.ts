@@ -1,19 +1,9 @@
 import { NextRequest } from 'next/server'
-import { extractWithOpenAI } from '@/lib/quote/providers/openai'
-import { extractWithAnthropic } from '@/lib/quote/providers/anthropic'
-import { extractWithGemini } from '@/lib/quote/providers/gemini'
-import { extractWithMock } from '@/lib/quote/providers/mock'
-import { isProviderId, type ProviderId, type ExtractProvider } from '@/lib/quote/providers/types'
+import { runExtractionPipeline } from '@/lib/quote/pipeline'
+import { isProviderId, type ProviderId } from '@/lib/quote/providers/types'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
-
-const PROVIDERS: Record<ProviderId, ExtractProvider> = {
-  openai:    extractWithOpenAI,
-  anthropic: extractWithAnthropic,
-  gemini:    extractWithGemini,
-  mock:      extractWithMock,
-}
 
 function pickProvider(req: NextRequest, form: FormData): ProviderId {
   const fromQuery  = req.nextUrl.searchParams.get('provider')
@@ -24,6 +14,22 @@ function pickProvider(req: NextRequest, form: FormData): ProviderId {
   const formValue = typeof fromForm === 'string' ? fromForm : null
   const candidate = fromQuery ?? fromHeader ?? formValue ?? fromEnv ?? 'mock'
   return isProviderId(candidate) ? candidate : 'mock'
+}
+
+function pickModel(req: NextRequest, form: FormData): string | undefined {
+  const fromQuery  = req.nextUrl.searchParams.get('model')
+  const fromHeader = req.headers.get('x-extract-model')
+  const fromForm   = form.get('model')
+  const formValue  = typeof fromForm === 'string' ? fromForm : null
+  return fromQuery ?? fromHeader ?? formValue ?? undefined
+}
+
+function pickSkipToc(req: NextRequest, form: FormData): boolean {
+  const fromQuery  = req.nextUrl.searchParams.get('skipToc')
+  const fromForm   = form.get('skipToc')
+  const formValue  = typeof fromForm === 'string' ? fromForm : null
+  const raw = fromQuery ?? formValue
+  return raw === '1' || raw === 'true'
 }
 
 export async function POST(req: NextRequest) {
@@ -43,19 +49,29 @@ export async function POST(req: NextRequest) {
   }
 
   const provider = pickProvider(req, form)
+  const model    = pickModel(req, form)
+  const skipToc  = pickSkipToc(req, form)
 
-  let result: Awaited<ReturnType<typeof PROVIDERS[typeof provider]>>
+  let result: Awaited<ReturnType<typeof runExtractionPipeline>>
   try {
-    result = await PROVIDERS[provider](file)
+    result = await runExtractionPipeline(file, { provider, model, skipToc })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Extraction failed unexpectedly.'
-    return Response.json({ error: message, provider }, { status: 502 })
+    return Response.json({ error: message, provider, model }, { status: 502 })
   }
 
   if (!result.ok) {
     const status = result.error.code === 'missing_key' ? 500 : result.error.status ?? 502
-    return Response.json({ error: result.error.message, provider }, { status })
+    return Response.json({ error: result.error.message, provider, model, toc: result.toc }, { status })
   }
 
-  return Response.json({ quote: result.quote, fileName: file.name, provider })
+  return Response.json({
+    quote: result.quote,
+    toc: result.toc,
+    validation: result.validation,
+    tocSkippedReason: result.tocSkippedReason ?? null,
+    fileName: file.name,
+    provider,
+    model,
+  })
 }

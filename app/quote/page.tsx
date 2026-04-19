@@ -10,8 +10,10 @@ import { generateQuotePdf } from '@/lib/generateQuotePdf'
 import { SUPPLIERS, SESSION_KEY, type Supplier } from '@/lib/suppliers'
 import { loadStoredQuote } from '@/lib/quote/store'
 import { itemsToRows, visualForCategory } from '@/lib/quote/pricing'
-import type { ExtractedQuote } from '@/lib/quote/types'
+import type { ExtractedQuote, ExtractedToc, QuoteValidation } from '@/lib/quote/types'
 import SupplierConnectModal from '@/components/SupplierConnectModal'
+import DetectedLotsPanel from '@/components/DetectedLotsPanel'
+import ValidationPanel from '@/components/ValidationPanel'
 import { getAllAccounts, subscribeAccounts, emptyDiscounts, type SupplierAccount } from '@/lib/supplierAccounts'
 import { getEntriesBySupplier, subscribeCatalog } from '@/lib/catalog/store'
 import { matchItem, methodLabel, methodTier } from '@/lib/catalog/matching'
@@ -248,6 +250,8 @@ export default function QuotePage() {
   const [supplierAccounts, setSupplierAccounts] = useState<Record<string, SupplierAccount>>({})
   const [showConnectModal, setShowConnectModal] = useState(false)
   const [extracted, setExtracted]     = useState<ExtractedQuote | null>(null)
+  const [toc, setToc]                 = useState<ExtractedToc | null>(null)
+  const [validation, setValidation]   = useState<QuoteValidation | null>(null)
   const [catalogEntries, setCatalogEntries] = useState<CatalogEntry[]>([])
   const [rows, setRows]               = useState<Row[]>(buildRows(SUPPLIERS[0].prices))
   const [draft, setDraft]             = useState<Row[]>(buildRows(SUPPLIERS[0].prices))
@@ -257,6 +261,8 @@ export default function QuotePage() {
     const supplier = (saved && SUPPLIERS.find(s => s.id === saved)) || SUPPLIERS[0]
     const stored = loadStoredQuote()
     if (stored && stored.quote.items.length > 0) setExtracted(stored.quote)
+    if (stored?.toc) setToc(stored.toc)
+    if (stored?.validation) setValidation(stored.validation)
     setSelectedSupplierId(supplier.id)
   }, [])
 
@@ -460,6 +466,18 @@ export default function QuotePage() {
             </div>
           </div>
         </Animate>
+
+        {toc && (
+          <Animate variant="fade-up" delay={40}>
+            <DetectedLotsPanel toc={toc} />
+          </Animate>
+        )}
+
+        {validation && (
+          <Animate variant="fade-up" delay={50}>
+            <ValidationPanel validation={validation} />
+          </Animate>
+        )}
 
         <Animate variant="fade-up" delay={60} as="section" className="mb-10">
           <div className="flex items-end justify-between mb-4">
@@ -697,7 +715,7 @@ export default function QuotePage() {
                 })}
               </div>
               <p className="text-[10px] text-on-surface-variant mt-4">
-                💡 V2 : Connectez votre compte fournisseur pour accéder à vos prix remisés automatiquement.
+                💡 {t.quote.supplierHint}
               </p>
             </Animate>
           </div>

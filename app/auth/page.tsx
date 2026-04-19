@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { useLanguage } from '@/contexts/LanguageContext'
 import Animate from '@/components/Animate'
 import { initTrial } from '@/lib/subscription'
+import { formatSiret, isValidSiret, isValidVatFr } from '@/lib/siret'
+import { createSubscriberOrg } from '@/lib/orgs'
+import { registerSubscriberOwner } from '@/lib/currentUser'
 
 type Mode = 'login' | 'signup'
 
@@ -18,6 +21,10 @@ export default function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [siret, setSiret] = useState('')
+  const [address, setAddress] = useState('')
+  const [vatIntra, setVatIntra] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -25,9 +32,33 @@ export default function AuthPage() {
     event.preventDefault()
     setError('')
 
+    if (mode === 'signup') {
+      if (!fullName.trim())                         return setError(t.auth.errorName)
+      if (!/^\S+@\S+\.\S+$/.test(email))            return setError(t.auth.errorEmail)
+      if (password.length < 6)                      return setError(t.auth.errorPassword)
+      if (password !== confirmPassword)             return setError(t.auth.errorConfirm)
+      if (!companyName.trim())                      return setError(t.auth.errorCompany)
+      if (!isValidSiret(siret))                     return setError(t.auth.errorSiret)
+      if (!address.trim())                          return setError(t.auth.errorAddress)
+      if (vatIntra.trim() && !isValidVatFr(vatIntra)) return setError(t.auth.errorVat)
+    }
+
     setIsSubmitting(true)
+
+    if (mode === 'signup') {
+      const org = createSubscriberOrg({
+        name: companyName,
+        siret,
+        address,
+        vatIntra: vatIntra.trim() || undefined,
+        contactName: fullName,
+        contactEmail: email,
+      })
+      registerSubscriberOwner({ name: fullName, email, orgId: org.id })
+      initTrial()
+    }
+
     localStorage.setItem('df_auth_session', 'active')
-    if (mode === 'signup') initTrial()
     const next = mode === 'signup' ? '/onboarding/suppliers' : '/dashboard'
     setTimeout(() => {
       router.push(next)
@@ -218,6 +249,96 @@ export default function AuthPage() {
                         />
                       </div>
                     </div>
+                  )}
+                </div>
+
+                <div className={`space-y-5 transition-all duration-500 origin-top ${mode === 'signup' ? 'opacity-100 max-h-[640px] scale-y-100' : 'opacity-0 max-h-0 scale-y-0 overflow-hidden'}`}>
+                  {mode === 'signup' && (
+                    <>
+                      <div className="flex items-center gap-3 pt-3">
+                        <div className="h-px flex-1 bg-outline-variant/20" />
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-primary text-base">business</span>
+                          <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-on-surface">{t.auth.companyStep}</span>
+                        </div>
+                        <div className="h-px flex-1 bg-outline-variant/20" />
+                      </div>
+                      <p className="text-[11px] text-on-surface-variant/80 leading-relaxed -mt-2 px-1">
+                        {t.auth.companyStepDesc}
+                      </p>
+
+                      <div className="space-y-2.5">
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">
+                          {t.auth.companyName}
+                        </label>
+                        <div className="relative group">
+                          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-2xl group-focus-within:text-primary transition-colors">storefront</span>
+                          <input
+                            type="text"
+                            value={companyName}
+                            onChange={(event) => setCompanyName(event.target.value)}
+                            className="w-full rounded-xl border border-outline-variant/20 bg-surface-container/60 pl-12 pr-4 py-4 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary/50 focus:bg-surface-container-high transition-all"
+                            placeholder={t.auth.companyNamePlaceholder}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">
+                          {t.auth.siret}
+                        </label>
+                        <div className="relative group">
+                          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-2xl group-focus-within:text-primary transition-colors">badge</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={siret}
+                            onChange={(event) => setSiret(formatSiret(event.target.value))}
+                            className="w-full rounded-xl border border-outline-variant/20 bg-surface-container/60 pl-12 pr-4 py-4 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary/50 focus:bg-surface-container-high transition-all font-mono"
+                            placeholder={t.auth.siretPlaceholder}
+                            maxLength={17}
+                          />
+                        </div>
+                        <p className="text-[10px] text-on-surface-variant/60 ml-1">{t.auth.siretHint}</p>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">
+                          {t.auth.address}
+                        </label>
+                        <div className="relative group">
+                          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-2xl group-focus-within:text-primary transition-colors">location_on</span>
+                          <input
+                            type="text"
+                            value={address}
+                            onChange={(event) => setAddress(event.target.value)}
+                            className="w-full rounded-xl border border-outline-variant/20 bg-surface-container/60 pl-12 pr-4 py-4 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary/50 focus:bg-surface-container-high transition-all"
+                            placeholder={t.auth.addressPlaceholder}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between ml-1">
+                          <label className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
+                            {t.auth.vatIntra}
+                          </label>
+                          <span className="text-[10px] text-on-surface-variant/50 uppercase tracking-widest">
+                            {t.auth.vatIntraOptional}
+                          </span>
+                        </div>
+                        <div className="relative group">
+                          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-2xl group-focus-within:text-primary transition-colors">receipt_long</span>
+                          <input
+                            type="text"
+                            value={vatIntra}
+                            onChange={(event) => setVatIntra(event.target.value.toUpperCase())}
+                            className="w-full rounded-xl border border-outline-variant/20 bg-surface-container/60 pl-12 pr-4 py-4 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary/50 focus:bg-surface-container-high transition-all font-mono"
+                            placeholder={t.auth.vatIntraPlaceholder}
+                          />
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
 

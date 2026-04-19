@@ -1,4 +1,4 @@
-import type { ExtractedQuote } from '../types'
+import type { ExtractedQuote, ExtractedToc } from '../types'
 
 export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'mock'
 
@@ -11,8 +11,22 @@ export type ProviderResult =
   | { ok: true;  quote: ExtractedQuote }
   | { ok: false; error: ProviderError }
 
+export type TocResult =
+  | { ok: true;  toc: ExtractedToc }
+  | { ok: false; error: ProviderError }
+
+export type ExtractOptions = {
+  /** Model id within the selected provider. Falls back to provider default. */
+  model?: string
+  /** Optional scope instruction from the TOC pass — prepended to the user message. */
+  scope?: string | null
+}
+
 /** A provider takes the uploaded PDF and returns a structured quote. */
-export type ExtractProvider = (file: File) => Promise<ProviderResult>
+export type ExtractProvider = (file: File, opts?: ExtractOptions) => Promise<ProviderResult>
+
+/** A TOC provider returns the lot index for a CCTP PDF. */
+export type TocProvider = (file: File, opts?: { model?: string }) => Promise<TocResult>
 
 export function isProviderId(v: string | null | undefined): v is ProviderId {
   return v === 'openai' || v === 'anthropic' || v === 'gemini' || v === 'mock'

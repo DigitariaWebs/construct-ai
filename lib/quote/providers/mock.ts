@@ -1,5 +1,5 @@
-import type { ExtractedQuote } from '../types'
-import type { ExtractProvider, ProviderResult } from './types'
+import type { ExtractedQuote, ExtractedToc } from '../types'
+import type { ExtractProvider, ProviderResult, TocProvider, TocResult } from './types'
 
 // Deterministic fake extraction used when no real provider key is configured.
 // Mirrors the shape a real LLM would return so the rest of the pipeline
@@ -34,7 +34,27 @@ const MOCK_QUOTE: ExtractedQuote = {
 
 const DELAY_MS = 3500 // lets the /processing UI animate through its stages
 
-export const extractWithMock: ExtractProvider = async (_file): Promise<ProviderResult> => {
+export const extractWithMock: ExtractProvider = async (_file, _opts): Promise<ProviderResult> => {
   await new Promise(r => setTimeout(r, DELAY_MS))
   return { ok: true, quote: MOCK_QUOTE }
+}
+
+// Fake TOC that mirrors a real multi-trade CCTP so we exercise the scoping
+// branch of the pipeline in demo mode.
+const MOCK_TOC: ExtractedToc = {
+  lots: [
+    { number: '01', title: 'Gros œuvre',            startPage: 1,  endPage: 22, isPlumbing: false },
+    { number: '02', title: 'Menuiseries extérieures', startPage: 23, endPage: 36, isPlumbing: false },
+    { number: '03', title: 'Cloisons / Doublages',  startPage: 37, endPage: 48, isPlumbing: false },
+    { number: '04', title: 'Électricité',           startPage: 49, endPage: 62, isPlumbing: false },
+    { number: '05', title: 'Plomberie sanitaire',   startPage: 63, endPage: 82, isPlumbing: true  },
+    { number: '06', title: 'Chauffage · Ventilation', startPage: 83, endPage: 98, isPlumbing: true  },
+    { number: '07', title: 'Peinture',              startPage: 99, endPage: 108, isPlumbing: false },
+  ],
+  notes: ['Index simulé — mode démo.'],
+}
+
+export const detectTocWithMock: TocProvider = async (): Promise<TocResult> => {
+  await new Promise(r => setTimeout(r, 400))
+  return { ok: true, toc: MOCK_TOC }
 }

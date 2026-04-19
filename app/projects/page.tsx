@@ -8,6 +8,7 @@ import Modal from '@/components/Modal'
 import Toast from '@/components/Toast'
 import Animate from '@/components/Animate'
 import UploadModal from '@/components/UploadModal'
+import PlatformBackdrop from '@/components/PlatformBackdrop'
 import { useLanguage } from '@/contexts/LanguageContext'
 import {
   deleteQuote,
@@ -130,7 +131,8 @@ export default function ProjectsPage() {
 
   return (
     <AppLayout>
-      <div className="pb-32 space-y-8">
+      <PlatformBackdrop />
+      <div className="relative z-10 pb-32 space-y-8">
 
         <Animate variant="fade-up" as="section" className="pt-4">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">

@@ -1,0 +1,226 @@
+// Deterministic post-extraction cleanup. Runs after the LLM returns
+// valid-shaped JSON but before the pipeline surfaces the quote to the UI.
+// Catches hallucinations, physical impossibilities, and duplicates the
+// model missed. Every correction is logged so the estimator can audit
+// what the pipeline changed.
+//
+// Pure module — no I/O, no provider calls. Easy to unit-test and safe to
+// run on every extraction regardless of source.
+
+import type { ExtractedItem, ExtractedQuote, QuoteValidation, Unit, ValidationIssue } from './types'
+
+// ---------- Domain rules ----------
+
+// Closed category whitelist. Mirrors the extraction system prompt.
+// Anything outside this set gets snapped to DIVERS with a warning.
+const CATEGORY_WHITELIST = new Set<string>([
+  'ALIMENTATION EF/EC',
+  'ÉVACUATION EU/EV',
+  'SANITAIRES',
+  'ROBINETTERIE',
+  'CHAUFFAGE',
+  'PRODUCTION ECS',
+  'VENTILATION',
+  'CALORIFUGEAGE',
+  'RACCORDEMENTS',
+  "MAIN D'ŒUVRE",
+  'DIVERS',
+])
+
+// Plausible units per category. Used for soft-warning — we keep the line
+// but flip uncertain=true. Categories outside the whitelist fall through
+// to DIVERS which accepts any unit.
+const UNITS_BY_CATEGORY: Record<string, Set<Unit>> = {
+  'ALIMENTATION EF/EC': new Set<Unit>(['ml', 'u', 'ens', 'pce']),
+  'ÉVACUATION EU/EV':  new Set<Unit>(['ml', 'u', 'ens', 'pce']),
+  'SANITAIRES':          new Set<Unit>(['u', 'ens']),
+  'ROBINETTERIE':        new Set<Unit>(['u', 'ens', 'pce']),
+  'CHAUFFAGE':           new Set<Unit>(['u', 'ml', 'kg', 'ens', 'pce']),
+  'PRODUCTION ECS':      new Set<Unit>(['u', 'ens']),
+  'VENTILATION':         new Set<Unit>(['u', 'ml', 'm2', 'ens', 'pce']),
+  'CALORIFUGEAGE':       new Set<Unit>(['ml', 'm2']),
+  'RACCORDEMENTS':       new Set<Unit>(['u', 'ens']),
+  "MAIN D'ŒUVRE":        new Set<Unit>(['h', 'ens']),
+}
+
+// Hard per-unit ceilings. A CCTP line requesting 10 000 ml of anything
+// is almost certainly an LLM slip (wrong unit, decimal error, or stray
+// zeroes). We keep the line but flip uncertain=true.
+const HARD_MAX_BY_UNIT: Record<Unit, number> = {
+  ml:  5000,
+  m2:  2000,
+  m3:  500,
+  u:   500,
+  kg:  10000,
+  h:   2000,
+  ens: 100,
+  pce: 1000,
+}
+
+// ---------- Helpers ----------
+
+function truncate(s: string, n = 60): string {
+  return s.length <= n ? s : s.slice(0, n - 1) + '…'
+}
+
+function summarize(item: ExtractedItem): string {
+  return `${item.name} · ${item.quantity} ${item.unit}`
+}
+
+// Normalize a name for dupe detection. We keep diameters (Ø12/14) because
+// those are the whole point of not-merging in the first place.
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')       // strip accents
+    .replace(/[^\p{L}\p{N}øØ/\-.]/gu, ' ') // keep letters, numbers, Ø, /, -, .
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// Group key = category + unit + normalized name. Merging is intentionally
+// strict — never across categories or units, because those would merge
+// genuinely different SKUs.
+function mergeKey(item: ExtractedItem): string {
+  return `${item.category}|${item.unit}|${normalizeName(item.name)}`
+}
+
+// ---------- Main entry point ----------
+
+export function validateQuote(quote: ExtractedQuote): {
+  quote: ExtractedQuote
+  validation: QuoteValidation
+} {
+  const removed: ValidationIssue[]  = []
+  const warnings: ValidationIssue[] = []
+  const merged: ValidationIssue[]   = []
+
+  // Stage 1 — drop broken lines.
+  const survivors: ExtractedItem[] = []
+  for (const item of quote.items) {
+    const reason = findHardFailure(item)
+    if (reason) {
+      removed.push({ item: truncate(summarize(item)), reason })
+      continue
+    }
+    survivors.push({ ...item })
+  }
+
+  // Stage 2 — snap unknown categories to DIVERS.
+  for (const item of survivors) {
+    if (!CATEGORY_WHITELIST.has(item.category)) {
+      warnings.push({
+        item: truncate(summarize(item)),
+        reason: `Catégorie hors référentiel « ${truncate(item.category, 40)} » → rebasculée en DIVERS.`,
+      })
+      item.category = 'DIVERS'
+      item.uncertain = true
+    }
+  }
+
+  // Stage 3 — soft flags on implausible unit/category or over-the-top qty.
+  for (const item of survivors) {
+    const allowed = UNITS_BY_CATEGORY[item.category]
+    if (allowed && !allowed.has(item.unit)) {
+      warnings.push({
+        item: truncate(summarize(item)),
+        reason: `Unité « ${item.unit} » inhabituelle pour ${item.category}. À vérifier.`,
+      })
+      item.uncertain = true
+    }
+    if (item.quantity > HARD_MAX_BY_UNIT[item.unit]) {
+      warnings.push({
+        item: truncate(summarize(item)),
+        reason: `Quantité ${item.quantity} ${item.unit} dépasse le plafond usuel (${HARD_MAX_BY_UNIT[item.unit]}). À confirmer.`,
+      })
+      item.uncertain = true
+    }
+    if (!item.uncertain && (!item.reference || item.reference.trim() === '')) {
+      warnings.push({
+        item: truncate(summarize(item)),
+        reason: 'Quantité donnée comme certaine mais aucune référence CCTP citée.',
+      })
+      item.uncertain = true
+    }
+  }
+
+  // Stage 4 — merge exact duplicates (same category + unit + normalized name).
+  // Strategy: sum quantities, keep the more-certain version of each field,
+  // prefer a non-empty reference over an empty one.
+  const byKey = new Map<string, { item: ExtractedItem; count: number }>()
+  for (const item of survivors) {
+    const key = mergeKey(item)
+    const existing = byKey.get(key)
+    if (!existing) {
+      byKey.set(key, { item, count: 1 })
+      continue
+    }
+    existing.item.quantity += item.quantity
+    if (!existing.item.reference && item.reference) existing.item.reference = item.reference
+    if (!existing.item.description && item.description) existing.item.description = item.description
+    existing.item.uncertain = existing.item.uncertain || item.uncertain
+    existing.count += 1
+  }
+
+  const deduped: ExtractedItem[] = []
+  for (const { item, count } of byKey.values()) {
+    if (count > 1) {
+      merged.push({
+        item: truncate(summarize(item)),
+        reason: `${count} lignes identiques fusionnées · quantité totale ${item.quantity} ${item.unit}.`,
+      })
+    }
+    deduped.push(item)
+  }
+
+  // Stage 5 — surface the corrections in the quote's notes as well, so
+  // they show up in the PDF export and not only in a dev-tools payload.
+  const summaryNotes = buildSummaryNotes({ removed, warnings, merged })
+
+  return {
+    quote: {
+      ...quote,
+      items: deduped,
+      notes: [...quote.notes, ...summaryNotes],
+    },
+    validation: { removed, warnings, merged },
+  }
+}
+
+// ---------- Hard-failure check ----------
+
+function findHardFailure(item: ExtractedItem): string | null {
+  if (!item.name || item.name.trim() === '') {
+    return 'Nom vide — ligne ignorée.'
+  }
+  if (!item.category || item.category.trim() === '') {
+    return 'Catégorie vide — ligne ignorée.'
+  }
+  if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+    return `Quantité invalide (${item.quantity}) — ligne ignorée.`
+  }
+  return null
+}
+
+// ---------- Notes summary ----------
+
+function buildSummaryNotes(v: QuoteValidation): string[] {
+  const notes: string[] = []
+  if (v.removed.length > 0) {
+    notes.push(`Validation : ${v.removed.length} ligne(s) supprimée(s) pour valeurs invalides.`)
+  }
+  if (v.merged.length > 0) {
+    notes.push(`Validation : ${v.merged.length} doublon(s) fusionné(s).`)
+  }
+  if (v.warnings.length > 0) {
+    notes.push(`Validation : ${v.warnings.length} avertissement(s) — quantités marquées incertaines.`)
+  }
+  return notes
+}
+
+// Useful for callers that want to know whether anything changed without
+// inspecting the full validation object.
+export function hasCorrections(v: QuoteValidation): boolean {
+  return v.removed.length > 0 || v.warnings.length > 0 || v.merged.length > 0
+}

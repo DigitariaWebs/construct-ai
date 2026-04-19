@@ -25,6 +25,11 @@ export type Org = {
   contactName?: string
   contactEmail?: string
   notes?: string
+  /** Legal identifiers — collected at signup for subscribers, captured
+   *  manually for service_clients. All optional so seed data stays valid. */
+  siret?: string
+  vatIntra?: string
+  address?: string
   createdAt: number
 }
 
@@ -123,6 +128,32 @@ export function getOrgsByKind(kind: OrgKind): Org[] {
 export function subscribeOrgs(cb: Listener): () => void {
   listeners.add(cb)
   return () => { listeners.delete(cb) }
+}
+
+export function createSubscriberOrg(input: {
+  name: string
+  siret: string
+  address: string
+  vatIntra?: string
+  contactName?: string
+  contactEmail?: string
+}): Org {
+  const orgs = safeLoad()
+  const id = `org-sub-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+  const org: Org = {
+    id,
+    name: input.name.trim(),
+    kind: 'subscriber',
+    billingMode: 'subscription',
+    siret: input.siret.replace(/\s/g, ''),
+    address: input.address.trim(),
+    vatIntra: input.vatIntra?.replace(/\s/g, '').toUpperCase() || undefined,
+    contactName: input.contactName?.trim() || undefined,
+    contactEmail: input.contactEmail?.trim() || undefined,
+    createdAt: Date.now(),
+  }
+  safeSave([...orgs, org])
+  return org
 }
 
 export function createServiceClientOrg(input: {

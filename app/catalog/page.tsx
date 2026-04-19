@@ -18,6 +18,27 @@ import { getAllAccounts, subscribeAccounts, type SupplierAccount } from '@/lib/s
 
 const CONNECTABLE = SUPPLIERS.filter(s => s.id !== 'auto')
 
+// Icon per product family — powers the row thumbnails that replaced the
+// all-text table. Keep in sync with FAMILIES in lib/catalog/types.ts.
+const FAMILY_ICONS: Record<Family, string> = {
+  ef_ec:      'water_drop',
+  pvc:        'waves',
+  sanitaires: 'bathtub',
+  chauffage:  'local_fire_department',
+  vmc:        'mode_fan',
+  autres:     'inventory_2',
+}
+
+// Radial-gradient tint per supplier tab — matches the supplier's tier color
+// so the tabs carry a bit of brand identity without needing real logos.
+const SUPPLIER_TINTS: Record<string, { from: string; ring: string }> = {
+  cdo:        { from: 'from-emerald-500/[0.08]', ring: 'ring-emerald-400/10' },
+  pim:        { from: 'from-cyan-500/[0.08]',    ring: 'ring-cyan-400/10'    },
+  richardson: { from: 'from-indigo-500/[0.08]',  ring: 'ring-indigo-400/10'  },
+  marplin:    { from: 'from-rose-500/[0.08]',    ring: 'ring-rose-400/10'    },
+}
+const DEFAULT_TINT = { from: 'from-primary/[0.06]', ring: 'ring-primary/10' }
+
 function fmtEur(v: number) {
   return v.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })
 }
@@ -139,10 +160,11 @@ export default function CatalogPage() {
     <AppLayout>
       <div className="pb-32 space-y-8">
 
-        <Animate variant="fade-up" as="section" className="pt-4">
-          <span className="text-primary font-headline font-bold tracking-widest text-[10px] uppercase">{t.catalog.kicker}</span>
-          <h1 className="text-4xl md:text-5xl font-headline font-black tracking-tighter text-on-surface mt-1">{t.catalog.pageTitle}</h1>
-          <p className="text-on-surface-variant mt-1 text-sm">{t.catalog.pageDesc}</p>
+        <Animate variant="fade-up" as="section" className="pt-4 relative isolate overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-br from-primary/[0.03] via-surface-container-lowest to-surface-container-lowest px-6 py-8 md:px-10 md:py-12">
+          <PlumbingHeroPattern />
+          <span className="relative text-primary font-headline font-bold tracking-widest text-[10px] uppercase">{t.catalog.kicker}</span>
+          <h1 className="relative text-4xl md:text-5xl font-headline font-black tracking-tighter text-on-surface mt-1">{t.catalog.pageTitle}</h1>
+          <p className="relative text-on-surface-variant mt-1 text-sm max-w-xl">{t.catalog.pageDesc}</p>
         </Animate>
 
         {/* Supplier tabs */}
@@ -152,17 +174,20 @@ export default function CatalogPage() {
               const active = s.id === activeSupplier
               const count  = countsBySupplier[s.id] ?? 0
               const acc    = accounts[s.id]
+              const tint   = SUPPLIER_TINTS[s.id] ?? DEFAULT_TINT
               return (
                 <button
                   key={s.id}
                   onClick={() => setActiveSupplier(s.id)}
-                  className={`group p-4 rounded-2xl border text-left transition-all ${
+                  className={`group relative overflow-hidden p-4 rounded-2xl border text-left transition-all bg-gradient-to-br ${tint.from} to-surface-container-low ${
                     active
-                      ? 'border-primary/50 bg-primary/[0.06] shadow-[0_0_24px_rgba(212,255,58,0.12)]'
-                      : 'border-white/5 bg-surface-container-low hover:border-primary/20'
+                      ? `border-primary/50 shadow-[0_0_24px_rgba(212,255,58,0.12)] ring-1 ${tint.ring}`
+                      : 'border-white/5 hover:border-primary/20'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2.5">
+                  {/* decorative corner glow */}
+                  <span aria-hidden className="pointer-events-none absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/5 blur-xl" />
+                  <div className="relative flex items-center justify-between mb-2.5">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-headline font-black text-[11px] transition-colors ${
                       active ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface'
                     }`}>{s.initials}</div>
@@ -170,8 +195,8 @@ export default function CatalogPage() {
                       <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
                     )}
                   </div>
-                  <div className="text-sm font-headline font-bold text-on-surface">{s.name}</div>
-                  <div className="mt-1 flex items-center justify-between">
+                  <div className="relative text-sm font-headline font-bold text-on-surface">{s.name}</div>
+                  <div className="relative mt-1 flex items-center justify-between">
                     <span className="text-[10px] text-on-surface-variant font-mono">{count.toLocaleString('fr-FR')} réf.</span>
                     {active && <span className="text-[9px] font-bold uppercase tracking-widest text-primary">Actif</span>}
                   </div>
@@ -297,6 +322,7 @@ export default function CatalogPage() {
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-surface-container-low z-10">
                       <tr className="text-left text-[10px] font-bold uppercase tracking-widest text-on-surface-variant border-b border-white/5">
+                        <th className="px-4 py-3 w-14"></th>
                         <th className="px-4 py-3">{t.catalog.colRef}</th>
                         <th className="px-4 py-3">Libellé</th>
                         <th className="px-4 py-3">Famille</th>
@@ -313,6 +339,9 @@ export default function CatalogPage() {
                         const discountPct = hasDiscount ? ((pubHT - e.netPriceHT) / pubHT) * 100 : 0
                         return (
                           <tr key={e.id} className="border-b border-white/5 last:border-0 hover:bg-surface-container-high transition-colors">
+                            <td className="pl-4 pr-1 py-3">
+                              <FamilyTile family={e.family} />
+                            </td>
                             <td className="px-4 py-3 font-mono text-[11px] text-on-surface-variant">{e.itemCode}</td>
                             <td className="px-4 py-3">
                               <div className="font-medium text-on-surface">{e.label}</div>
@@ -420,24 +449,78 @@ function SourceBadge({ source }: { source: 'fabdis' | 'invoice_ocr' | 'manual' }
 
 function EmptyState({ onImport, supplierName }: { onImport: () => void; supplierName: string }) {
   return (
-    <div className="bg-surface-container-lowest rounded-2xl border border-dashed border-outline-variant/30 py-16 px-6 text-center">
-      <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5">
+    <div className="relative isolate overflow-hidden rounded-2xl border border-dashed border-outline-variant/30 bg-gradient-to-br from-primary/[0.02] via-surface-container-lowest to-surface-container-lowest py-16 px-6 text-center">
+      <PlumbingHeroPattern />
+      <div className="relative mx-auto w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5">
         <span className="material-symbols-outlined text-primary text-3xl">inventory_2</span>
       </div>
-      <h3 className="font-headline font-black text-2xl text-on-surface tracking-tight mb-2">
+      <h3 className="relative font-headline font-black text-2xl text-on-surface tracking-tight mb-2">
         Aucune référence pour {supplierName}
       </h3>
-      <p className="text-sm text-on-surface-variant max-w-md mx-auto mb-6">
+      <p className="relative text-sm text-on-surface-variant max-w-md mx-auto mb-6">
         Importez votre catalogue FAB-DIS, déposez une facture ou saisissez vos remises pour commencer à bâtir votre base de prix personnelle.
       </p>
       <button
         onClick={onImport}
-        className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary font-headline font-black uppercase tracking-[0.15em] text-sm rounded-xl hover:shadow-[0_0_30px_rgba(212,255,58,0.45)] active:scale-95 transition-all"
+        className="relative inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary font-headline font-black uppercase tracking-[0.15em] text-sm rounded-xl hover:shadow-[0_0_30px_rgba(212,255,58,0.45)] active:scale-95 transition-all"
       >
         <span className="material-symbols-outlined text-lg">upload_file</span>
         Importer maintenant
       </button>
+
+      {/* Decorative floating icons */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <span className="material-symbols-outlined absolute top-8 left-6 text-primary/15 text-5xl rotate-[-12deg]">plumbing</span>
+        <span className="material-symbols-outlined absolute bottom-10 right-8 text-cyan-400/15 text-6xl rotate-[12deg]">water_drop</span>
+        <span className="material-symbols-outlined absolute top-14 right-16 text-rose-400/10 text-4xl">local_fire_department</span>
+        <span className="material-symbols-outlined absolute bottom-6 left-14 text-emerald-400/10 text-4xl">mode_fan</span>
+      </div>
     </div>
+  )
+}
+
+/** Small colored icon tile shown at the start of each catalog row. */
+function FamilyTile({ family }: { family: Family }) {
+  const c = FAMILY_COLORS[family]
+  const icon = FAMILY_ICONS[family]
+  return (
+    <div className={`w-10 h-10 rounded-lg flex items-center justify-center border border-white/5 ${c.bg}`}>
+      <span className={`material-symbols-outlined text-[18px] ${c.text}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+        {icon}
+      </span>
+    </div>
+  )
+}
+
+/** Subtle plumbing-themed background pattern (SVG, inlined). */
+function PlumbingHeroPattern() {
+  return (
+    <svg
+      aria-hidden
+      className="pointer-events-none absolute inset-0 w-full h-full opacity-[0.09] text-primary"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <pattern id="plumbing-grid" width="48" height="48" patternUnits="userSpaceOnUse">
+          <path d="M 48 0 L 0 0 0 48" fill="none" stroke="currentColor" strokeWidth="0.5" />
+        </pattern>
+        <radialGradient id="plumbing-mask" cx="50%" cy="50%" r="75%">
+          <stop offset="0%"   stopColor="white" stopOpacity="1" />
+          <stop offset="100%" stopColor="white" stopOpacity="0" />
+        </radialGradient>
+        <mask id="plumbing-fade">
+          <rect width="100%" height="100%" fill="url(#plumbing-mask)" />
+        </mask>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#plumbing-grid)" mask="url(#plumbing-fade)" />
+      {/* stylized pipe silhouettes */}
+      <g mask="url(#plumbing-fade)" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round">
+        <path d="M -20 80 Q 120 80 120 140 T 260 200" />
+        <path d="M 340 -20 Q 340 80 420 80 T 560 120" />
+        <circle cx="120" cy="140" r="6" fill="currentColor" opacity="0.5" />
+        <circle cx="420" cy="80"  r="6" fill="currentColor" opacity="0.5" />
+      </g>
+    </svg>
   )
 }
 

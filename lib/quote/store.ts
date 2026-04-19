@@ -6,11 +6,14 @@
 //
 // No external deps; module state survives client-side navigations.
 
-import type { ExtractedQuote } from './types'
+import type { ExtractedQuote, ExtractedToc, QuoteValidation } from './types'
 import { recordQuoteUsed } from '@/lib/subscription'
+import { getAiPreference } from '@/lib/aiPreference'
 
-const RESULT_KEY = 'df_quote_result'
-const FILE_KEY   = 'df_quote_file_name'
+const RESULT_KEY     = 'df_quote_result'
+const FILE_KEY       = 'df_quote_file_name'
+const TOC_KEY        = 'df_quote_toc'
+const VALIDATION_KEY = 'df_quote_validation'
 
 export type ExtractionStage =
   | 'reading'     // uploading file / starting request
@@ -23,7 +26,7 @@ export type ExtractionStage =
 export type ExtractionState =
   | { status: 'idle' }
   | { status: 'running'; fileName: string; stage: ExtractionStage; progress: number }
-  | { status: 'done';    fileName: string; quote: ExtractedQuote }
+  | { status: 'done';    fileName: string; quote: ExtractedQuote; toc: ExtractedToc | null; validation: QuoteValidation | null }
   | { status: 'error';   fileName: string; message: string }
 
 type Listener = (s: ExtractionState) => void
@@ -50,11 +53,24 @@ const STAGE_PROGRESS: Record<ExtractionStage, number> = {
 
 export async function startExtraction(file: File) {
   // Clear any previous result
-  try { sessionStorage.removeItem(RESULT_KEY); sessionStorage.removeItem(FILE_KEY) } catch {}
+  try {
+    sessionStorage.removeItem(RESULT_KEY)
+    sessionStorage.removeItem(FILE_KEY)
+    sessionStorage.removeItem(TOC_KEY)
+    sessionStorage.removeItem(VALIDATION_KEY)
+  } catch {}
   set({ status: 'running', fileName: file.name, stage: 'reading', progress: STAGE_PROGRESS.reading })
 
   const form = new FormData()
   form.append('file', file)
+
+  // Honor the org's AI-engine preference if set. Server still falls back
+  // to EXTRACTION_PROVIDER env var when neither provider nor model is sent.
+  const pref = getAiPreference()
+  if (pref) {
+    form.append('provider', pref.provider)
+    form.append('model', pref.model)
+  }
 
   try {
     // Kick off request and simulate stage transitions while we wait —
@@ -79,36 +95,49 @@ export async function startExtraction(file: File) {
       throw new Error(body.error || `HTTP ${res.status}`)
     }
 
-    const data = await res.json() as { quote: ExtractedQuote; fileName: string }
+    const data = await res.json() as { quote: ExtractedQuote; fileName: string; toc: ExtractedToc | null; validation: QuoteValidation | null }
     set({ status: 'running', fileName: data.fileName, stage: 'pricing', progress: STAGE_PROGRESS.pricing })
 
     // Persist to sessionStorage so /quote survives a hard refresh.
     try {
       sessionStorage.setItem(RESULT_KEY, JSON.stringify(data.quote))
       sessionStorage.setItem(FILE_KEY, data.fileName)
+      if (data.toc) sessionStorage.setItem(TOC_KEY, JSON.stringify(data.toc))
+      else sessionStorage.removeItem(TOC_KEY)
+      if (data.validation) sessionStorage.setItem(VALIDATION_KEY, JSON.stringify(data.validation))
+      else sessionStorage.removeItem(VALIDATION_KEY)
     } catch {}
 
     recordQuoteUsed()
-    set({ status: 'done', fileName: data.fileName, quote: data.quote })
+    set({ status: 'done', fileName: data.fileName, quote: data.quote, toc: data.toc ?? null, validation: data.validation ?? null })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown extraction error.'
     set({ status: 'error', fileName: file.name, message })
   }
 }
 
-export function loadStoredQuote(): { quote: ExtractedQuote; fileName: string } | null {
+export function loadStoredQuote(): { quote: ExtractedQuote; fileName: string; toc: ExtractedToc | null; validation: QuoteValidation | null } | null {
   try {
     const raw = sessionStorage.getItem(RESULT_KEY)
     if (!raw) return null
     const quote = JSON.parse(raw) as ExtractedQuote
     const fileName = sessionStorage.getItem(FILE_KEY) || 'CCTP.pdf'
-    return { quote, fileName }
+    const tocRaw = sessionStorage.getItem(TOC_KEY)
+    const toc = tocRaw ? JSON.parse(tocRaw) as ExtractedToc : null
+    const validationRaw = sessionStorage.getItem(VALIDATION_KEY)
+    const validation = validationRaw ? JSON.parse(validationRaw) as QuoteValidation : null
+    return { quote, fileName, toc, validation }
   } catch {
     return null
   }
 }
 
 export function clearStoredQuote() {
-  try { sessionStorage.removeItem(RESULT_KEY); sessionStorage.removeItem(FILE_KEY) } catch {}
+  try {
+    sessionStorage.removeItem(RESULT_KEY)
+    sessionStorage.removeItem(FILE_KEY)
+    sessionStorage.removeItem(TOC_KEY)
+    sessionStorage.removeItem(VALIDATION_KEY)
+  } catch {}
   set({ status: 'idle' })
 }

@@ -79,10 +79,13 @@ function safeLoad(): User {
       return DEFAULT_USER
     }
     const parsed = JSON.parse(raw) as User
-    // Defensive: find seed by id so any stale state (e.g. renamed) stays coherent.
+    if (!parsed || !parsed.id) return DEFAULT_USER
+    // If this id matches a demo seed, re-hydrate from the seed so renames
+    // stay coherent. Otherwise trust what's stored — it's a real signup
+    // (via registerSubscriberOwner) that won't appear in SEED_USERS.
     const seed = SEED_USERS.find(u => u.id === parsed.id)
-    if (!seed) return DEFAULT_USER
-    return { ...seed, activeOrgId: parsed.activeOrgId || seed.primaryOrgId }
+    if (seed) return { ...seed, activeOrgId: parsed.activeOrgId || seed.primaryOrgId }
+    return parsed
   } catch {
     return DEFAULT_USER
   }
@@ -132,6 +135,37 @@ export function setActiveOrg(orgId: string): User {
 export function resetToPrimaryOrg(): User {
   const u = safeLoad()
   return setActiveOrg(u.primaryOrgId)
+}
+
+/**
+ * Signup path: mint a fresh owner user bound to the org just created in
+ * `createSubscriberOrg`, and persist it as the current session. Unlike
+ * `switchUser` this doesn't lean on SEED_USERS — the user is brand new.
+ */
+export function registerSubscriberOwner(input: {
+  name: string
+  email: string
+  orgId: string
+}): User {
+  const trimmed = input.name.trim() || input.email.split('@')[0]
+  const user: User = {
+    id: `u-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    name: trimmed,
+    email: input.email.trim(),
+    initials: deriveInitials(trimmed),
+    role: 'owner',
+    primaryOrgId: input.orgId,
+    activeOrgId: input.orgId,
+  }
+  safeSave(user)
+  return user
+}
+
+function deriveInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '??'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 /** Is the admin currently impersonating a different org? */

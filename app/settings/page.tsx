@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AppLayout from '@/components/AppLayout'
 import Toast from '@/components/Toast'
 import Animate from '@/components/Animate'
@@ -17,16 +17,41 @@ import {
   type Subscription,
 } from '@/lib/subscription'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { getCurrentUser, subscribeCurrentUser, type Role } from '@/lib/currentUser'
+import {
+  getAiPreference,
+  setAiPreference,
+  subscribeAiPreference,
+  type AiPreference,
+} from '@/lib/aiPreference'
+import { MODEL_CATALOG, DEFAULT_MODEL } from '@/lib/quote/providers/models'
+import type { ProviderId } from '@/lib/quote/providers/types'
 
-type Tab = 'profil' | 'fournisseurs' | 'abonnement' | 'securite' | 'notifications'
+type Tab = 'profil' | 'fournisseurs' | 'abonnement' | 'ia' | 'securite' | 'notifications'
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
+const TABS: { id: Tab; label: string; icon: string; roles?: Role[] }[] = [
   { id: 'profil',        label: 'Profil',        icon: 'person'        },
   { id: 'fournisseurs',  label: 'Fournisseurs',  icon: 'storefront'    },
   { id: 'abonnement',    label: 'Abonnement',    icon: 'credit_card'   },
+  { id: 'ia',            label: 'Moteur IA',     icon: 'smart_toy',      roles: ['admin', 'owner'] },
   { id: 'securite',      label: 'Sécurité',      icon: 'lock'          },
   { id: 'notifications', label: 'Notifications', icon: 'notifications' },
 ]
+
+const PROVIDER_META: Record<ProviderId, { label: string; icon: string; sub: string }> = {
+  anthropic: { label: 'Anthropic',      icon: 'auto_awesome',  sub: 'Claude 4.x family'        },
+  openai:    { label: 'OpenAI',         icon: 'psychology',    sub: 'GPT-4o family'            },
+  gemini:    { label: 'Google Gemini',  icon: 'diamond',       sub: 'Gemini 2.5 family'        },
+  mock:      { label: 'Démo',           icon: 'science',       sub: 'Réponse fictive · sans clé' },
+}
+
+type ProviderStatus = {
+  openai: boolean
+  anthropic: boolean
+  gemini: boolean
+  mock: boolean
+  envDefault: string | null
+}
 
 const TAB_IDS = TABS.map(t => t.id)
 const isTab = (v: string | null): v is Tab => !!v && (TAB_IDS as string[]).includes(v)
@@ -81,6 +106,47 @@ export default function SettingsPage() {
   const [sessionTimeout, setSessionTimeout] = useState(60)
   const [notifs, setNotifs] = useState({ devisGenere: true, erreurAnalyse: true, renouvellement: true, nouvelles: false, conseils: false })
 
+  // AI engine preference (Moteur IA tab)
+  const [userRole, setUserRole] = useState<Role>('member')
+  const [aiPref, setAiPrefState] = useState<AiPreference | null>(null)
+  const [aiStatus, setAiStatus] = useState<ProviderStatus | null>(null)
+
+  useEffect(() => {
+    setUserRole(getCurrentUser().role)
+    const unsub = subscribeCurrentUser(u => setUserRole(u.role))
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    setAiPrefState(getAiPreference())
+    const unsub = subscribeAiPreference(p => setAiPrefState(p))
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/extract/status')
+      .then(r => r.ok ? r.json() as Promise<ProviderStatus> : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(s => { if (!cancelled) setAiStatus(s) })
+      .catch(() => { /* silent — cards just show neutral state */ })
+    return () => { cancelled = true }
+  }, [])
+
+  const visibleTabs = useMemo(
+    () => TABS.filter(t => !t.roles || t.roles.includes(userRole)),
+    [userRole],
+  )
+
+  const pickProvider = (id: ProviderId) => {
+    const next = setAiPreference({ provider: id, model: aiPref?.provider === id && aiPref.model ? aiPref.model : DEFAULT_MODEL[id] })
+    setToast({ message: `Moteur IA : ${PROVIDER_META[next.provider].label} · ${MODEL_CATALOG[next.provider].find(m => m.id === next.model)?.label ?? next.model}`, type: 'success' })
+  }
+
+  const pickModel = (modelId: string) => {
+    if (!aiPref) return
+    setAiPreference({ provider: aiPref.provider, model: modelId })
+  }
+
   const handleSave = () => setToast({ message: 'Paramètres enregistrés.', type: 'success' })
 
   return (
@@ -97,7 +163,7 @@ export default function SettingsPage() {
 
           <Animate variant="slide-left" className="lg:w-52 flex-shrink-0">
             <nav className="bg-surface-container-low rounded-2xl border border-white/5 p-2 space-y-1">
-              {TABS.map(tab => (
+              {visibleTabs.map(tab => (
                 <button key={tab.id} onClick={() => selectTab(tab.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === tab.id ? 'bg-primary/10 text-primary border-l-2 border-primary pl-3' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'}`}>
                   <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: activeTab === tab.id ? "'FILL' 1" : "'FILL' 0" }}>{tab.icon}</span>
                   {tab.label}
@@ -397,6 +463,131 @@ export default function SettingsPage() {
                 </div>
               )
             })()}
+
+            {activeTab === 'ia' && (userRole === 'admin' || userRole === 'owner') && (
+              <div className="bg-surface-container-low rounded-2xl border border-white/5 p-8 space-y-8">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="font-headline font-bold text-xl text-on-surface">Moteur IA</h2>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                      {userRole === 'admin' ? 'Admin' : 'Propriétaire'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-on-surface-variant">
+                    Choisissez le fournisseur et le modèle qui analysent vos CCTP. Le réglage est par compte — chaque organisation a son propre moteur.
+                  </p>
+                </div>
+
+                {/* Active pill */}
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container border border-white/5">
+                  <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-primary text-base" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] uppercase tracking-widest text-on-surface-variant">Actuellement utilisé</div>
+                    {aiPref ? (
+                      <div className="text-sm font-headline font-bold text-on-surface truncate">
+                        {PROVIDER_META[aiPref.provider].label} · {MODEL_CATALOG[aiPref.provider].find(m => m.id === aiPref.model)?.label ?? aiPref.model}
+                      </div>
+                    ) : (
+                      <div className="text-sm font-headline font-bold text-on-surface-variant truncate">
+                        Réglage serveur par défaut{aiStatus?.envDefault ? ` · ${aiStatus.envDefault}` : ''}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Provider cards */}
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Fournisseur</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(Object.keys(PROVIDER_META) as ProviderId[]).map(id => {
+                      const meta   = PROVIDER_META[id]
+                      const keyed  = aiStatus ? aiStatus[id] : false
+                      const active = aiPref?.provider === id
+                      const disabled = aiStatus !== null && !keyed && id !== 'mock'
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => !disabled && pickProvider(id)}
+                          disabled={disabled}
+                          className={`text-left p-4 rounded-xl border transition-all ${
+                            active
+                              ? 'border-primary/50 bg-primary/[0.06] shadow-[0_0_24px_rgba(212,255,58,0.08)]'
+                              : disabled
+                                ? 'border-white/5 bg-surface-container/40 opacity-50 cursor-not-allowed'
+                                : 'border-white/5 bg-surface-container hover:border-primary/25 hover:bg-surface-container-high'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${active ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface'}`}>
+                              <span className="material-symbols-outlined text-lg">{meta.icon}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-headline font-bold text-sm text-on-surface truncate">{meta.label}</span>
+                                {id === 'mock' ? (
+                                  <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-white/5 text-on-surface-variant">Démo</span>
+                                ) : aiStatus === null ? null : keyed ? (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">
+                                    <span className="w-1 h-1 rounded-full bg-emerald-400" />Prêt
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-400">Clé manquante</span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-on-surface-variant mt-0.5 truncate">{meta.sub}</div>
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Model picker — cascades off the selected provider */}
+                {aiPref && (
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">
+                      Modèle — {PROVIDER_META[aiPref.provider].label}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {MODEL_CATALOG[aiPref.provider].map(m => {
+                        const active = m.id === aiPref.model
+                        const tierBadge = m.tier === 'max' ? { label: 'Max', cls: 'bg-primary/10 text-primary' }
+                                        : m.tier === 'fast' ? { label: 'Fast', cls: 'bg-sky-500/10 text-sky-400' }
+                                        : { label: 'Balanced', cls: 'bg-white/5 text-on-surface-variant' }
+                        return (
+                          <button
+                            key={m.id}
+                            onClick={() => pickModel(m.id)}
+                            className={`text-left p-3 rounded-xl border transition-all ${
+                              active
+                                ? 'border-primary/50 bg-primary/[0.06]'
+                                : 'border-white/5 bg-surface-container hover:border-primary/25'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-headline font-bold text-on-surface truncate flex-1">{m.label}</span>
+                              <span className={`text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full ${tierBadge.cls}`}>{tierBadge.label}</span>
+                            </div>
+                            {m.note && <div className="text-[10px] text-on-surface-variant leading-snug">{m.note}</div>}
+                            <div className="text-[9px] font-mono text-on-surface-variant/60 mt-1 truncate">{m.id}</div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-3 rounded-xl bg-surface-container border border-white/5 flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-on-surface-variant text-sm shrink-0 mt-0.5">info</span>
+                  <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                    Le changement est immédiat et ne s'applique qu'à votre organisation. Si une clé API manque côté serveur, l'extraction remontera une erreur explicite.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {activeTab === 'securite' && (
               <div className="space-y-6">
