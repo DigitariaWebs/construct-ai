@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { SUPPLIERS, SESSION_KEY, type Supplier } from '@/lib/suppliers'
 import { startExtraction } from '@/lib/quote/store'
+import { canCreateQuote } from '@/lib/subscription'
+import PaywallModal from '@/components/PaywallModal'
 
 const ACCEPTED = ['.pdf', '.dwg', '.ifc', '.rvt']
 
@@ -16,14 +18,38 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
   const [step, setStep]                   = useState<1 | 2>(1)
   const [dragging, setDragging]           = useState(false)
   const [file, setFile]                   = useState<File | null>(null)
+  const [fileError, setFileError]         = useState<string | null>(null)
   const [selectedId, setSelectedId]       = useState('auto')
   const [launching, setLaunching]         = useState(false)
+  const [blocked, setBlocked]             = useState(false)
+
+  // Gate the upload flow: once the free quote is used, this modal
+  // hands over to PaywallModal until the user subscribes.
+  useEffect(() => {
+    setBlocked(!canCreateQuote())
+  }, [])
+
+  if (blocked) {
+    return (
+      <PaywallModal
+        onClose={onClose}
+        onSubscribed={() => setBlocked(false)}
+        reason="trial-used"
+      />
+    )
+  }
 
   // ── Step 1: file accepted → move to step 2 ────────────────────────────────
-  const handleFile = useCallback((f: File) => {
+  const handleFile = (f: File) => {
+    const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+    if (!isPdf) {
+      setFileError('Seuls les fichiers PDF sont pris en charge pour l\'instant.')
+      return
+    }
+    setFileError(null)
     setFile(f)
     setTimeout(() => setStep(2), 350)
-  }, [])
+  }
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault()
@@ -153,11 +179,16 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
-            <input ref={inputRef} type="file" accept={ACCEPTED.join(',')} className="hidden" onChange={onInputChange} />
+            <input ref={inputRef} type="file" accept=".pdf" className="hidden" onChange={onInputChange} />
+
+            {fileError && (
+              <p className="mt-4 text-center text-sm text-red-400">{fileError}</p>
+            )}
 
             <div className="flex justify-center gap-2 mt-5">
-              {ACCEPTED.map(ext => (
-                <span key={ext} className="px-3 py-1 rounded-full bg-surface-container border border-outline-variant/20 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+              <span className="px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-[10px] font-bold uppercase tracking-widest text-primary">pdf</span>
+              {['.dwg', '.ifc', '.rvt'].map(ext => (
+                <span key={ext} className="px-3 py-1 rounded-full bg-surface-container border border-outline-variant/20 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 line-through" title="Bientôt disponible">
                   {ext.replace('.', '')}
                 </span>
               ))}

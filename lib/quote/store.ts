@@ -7,6 +7,7 @@
 // No external deps; module state survives client-side navigations.
 
 import type { ExtractedQuote } from './types'
+import { recordQuoteUsed } from '@/lib/subscription'
 
 const RESULT_KEY = 'df_quote_result'
 const FILE_KEY   = 'df_quote_file_name'
@@ -87,6 +88,7 @@ export async function startExtraction(file: File) {
       sessionStorage.setItem(FILE_KEY, data.fileName)
     } catch {}
 
+    recordQuoteUsed()
     set({ status: 'done', fileName: data.fileName, quote: data.quote })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown extraction error.'

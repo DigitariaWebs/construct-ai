@@ -43,7 +43,14 @@ export async function POST(req: NextRequest) {
   }
 
   const provider = pickProvider(req, form)
-  const result = await PROVIDERS[provider](file)
+
+  let result: Awaited<ReturnType<typeof PROVIDERS[typeof provider]>>
+  try {
+    result = await PROVIDERS[provider](file)
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Extraction failed unexpectedly.'
+    return Response.json({ error: message, provider }, { status: 502 })
+  }
 
   if (!result.ok) {
     const status = result.error.code === 'missing_key' ? 500 : result.error.status ?? 502

@@ -16,7 +16,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Digital Foreman — CCTP → devis en quelques minutes',
+  title: 'Plombier Chiffrage — CCTP → devis en quelques minutes',
   description:
     'Déposez votre CCTP, recevez un devis conforme, poste par poste. Plus de nuits blanches sur les métrés.',
 }
@@ -26,7 +26,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
-      lang="en"
+      lang="fr"
       className={`dark ${manrope.variable} ${inter.variable}`}
     >
       <head>

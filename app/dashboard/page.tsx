@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
 import Footer from '@/components/Footer'
 import UploadModal from '@/components/UploadModal'
+import PaywallModal from '@/components/PaywallModal'
 import Toast from '@/components/Toast'
 import Animate from '@/components/Animate'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { getSubscription, subscribeSubscription, remainingTrialQuotes, type Subscription } from '@/lib/subscription'
 
 const metrics = [
   {
@@ -60,7 +62,18 @@ export default function DashboardPage() {
   const { t } = useLanguage()
   const router = useRouter()
   const [showUpload, setShowUpload] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [sub, setSub] = useState<Subscription | null>(null)
+
+  useEffect(() => {
+    setSub(getSubscription())
+    return subscribeSubscription(s => setSub({ ...s }))
+  }, [])
+
+  const onTrial    = sub?.plan === 'trial'
+  const trialLeft  = sub ? remainingTrialQuotes() : 1
+  const trialUsed  = onTrial && trialLeft === 0
 
   const handleQuickAction = (action: string) => {
     if (action === 'upload') { setShowUpload(true); return }
@@ -172,6 +185,46 @@ export default function DashboardPage() {
             </Animate>
           </div>
         </section>
+
+        {/* ── Trial status strip ─────────────────────────── */}
+        {onTrial && (
+          <Animate variant="fade-up" as="section">
+            <div className={`relative overflow-hidden rounded-2xl border px-6 py-4 flex flex-col md:flex-row md:items-center gap-4 ${
+              trialUsed
+                ? 'border-amber-500/30 bg-amber-500/[0.06]'
+                : 'border-primary/30 bg-primary/[0.06]'
+            }`}>
+              <div className={`flex items-center gap-3 ${trialUsed ? 'text-amber-300' : 'text-primary'}`}>
+                <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  {trialUsed ? 'lock' : 'auto_awesome'}
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-[0.25em]">Essai</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-on-surface">
+                  {trialUsed
+                    ? 'Votre devis gratuit est utilisé.'
+                    : `Il vous reste ${trialLeft} devis gratuit${trialLeft > 1 ? 's' : ''}.`}
+                </p>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  {trialUsed
+                    ? 'Passez à un plan payant pour générer de nouveaux devis.'
+                    : 'Essayez l\u2019estimateur — sans carte de crédit requise.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPaywall(true)}
+                className={`shrink-0 px-5 py-2.5 rounded-xl font-headline font-black uppercase tracking-[0.15em] text-xs transition-all ${
+                  trialUsed
+                    ? 'bg-primary text-on-primary hover:shadow-[0_0_24px_rgba(212,255,58,0.45)]'
+                    : 'bg-surface-container border border-primary/30 text-primary hover:bg-primary/10'
+                }`}
+              >
+                {trialUsed ? 'Débloquer' : 'Voir les plans'}
+              </button>
+            </div>
+          </Animate>
+        )}
 
         {/* ── Launch estimator banner ────────────────────── */}
         <Animate variant="fade-up" delay={80} as="section">
@@ -641,15 +694,8 @@ export default function DashboardPage() {
 
       <Footer />
 
-      {/* Floating action button — kept lime as single primary CTA */}
-      <button
-        onClick={() => setShowUpload(true)}
-        className="fixed bottom-24 right-6 md:bottom-12 md:right-12 h-16 w-16 bg-primary rounded-full flex items-center justify-center text-on-primary shadow-[0_8px_30px_rgba(212,255,58,0.4)] hover:scale-110 active:scale-95 transition-all z-40"
-      >
-        <span className="material-symbols-outlined text-3xl">add</span>
-      </button>
-
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
+      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} reason="upgrade" />}
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </AppLayout>
   )

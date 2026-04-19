@@ -5,6 +5,18 @@ import AppLayout from '@/components/AppLayout'
 import Toast from '@/components/Toast'
 import Animate from '@/components/Animate'
 import { SUPPLIERS } from '@/lib/suppliers'
+import SupplierConnectModal from '@/components/SupplierConnectModal'
+import PaywallModal from '@/components/PaywallModal'
+import { disconnectSupplier, getAllAccounts, subscribeAccounts, type SupplierAccount } from '@/lib/supplierAccounts'
+import {
+  downgradeToTrial,
+  getSubscription,
+  PAID_PLANS,
+  remainingTrialQuotes,
+  subscribeSubscription,
+  type Subscription,
+} from '@/lib/subscription'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 type Tab = 'profil' | 'fournisseurs' | 'abonnement' | 'securite' | 'notifications'
 
@@ -28,6 +40,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 export default function SettingsPage() {
+  const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState<Tab>('profil')
   const [toast, setToast]         = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
@@ -46,6 +59,22 @@ export default function SettingsPage() {
 
   const [profil, setProfil] = useState({ firstName: 'Jean-Marc', lastName: 'Bertrand', email: 'jm.bertrand@plomberie-bertrand.fr', phone: '06 12 34 56 78', company: 'Plomberie Bertrand', sector: 'Plomberie' })
   const [defaultSupplier, setDefaultSupplier] = useState('cdo')
+  const [supplierAccounts, setSupplierAccounts] = useState<Record<string, SupplierAccount>>({})
+  const [connectModalId, setConnectModalId] = useState<string | null>(null)
+  const [connectModalOpen, setConnectModalOpen] = useState(false)
+
+  useEffect(() => {
+    setSupplierAccounts(getAllAccounts())
+    return subscribeAccounts(s => setSupplierAccounts({ ...s }))
+  }, [])
+
+  const [sub, setSub] = useState<Subscription | null>(null)
+  const [showPaywall, setShowPaywall] = useState(false)
+
+  useEffect(() => {
+    setSub(getSubscription())
+    return subscribeSubscription(s => setSub({ ...s }))
+  }, [])
   const [twoFactor,   setTwoFactor]   = useState(false)
   const [auditLog,    setAuditLog]    = useState(true)
   const [ipWhitelist, setIpWhitelist] = useState(false)
@@ -116,14 +145,14 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Logo société (exports PDF)</label>
-                  <button onClick={() => setToast({ message: "Upload de logo bientôt disponible.", type: 'info' })} className="w-full md:w-64 h-20 rounded-xl border-2 border-dashed border-outline-variant/30 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors group">
+                  <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">{t.settings.logoLabel}</label>
+                  <button onClick={() => setToast({ message: t.settings.toastLogoSoon, type: 'info' })} className="w-full md:w-64 h-20 rounded-xl border-2 border-dashed border-outline-variant/30 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors group">
                     <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">upload</span>
-                    <span className="text-xs text-on-surface-variant">Téléverser le logo</span>
+                    <span className="text-xs text-on-surface-variant">{t.settings.uploadLogo}</span>
                   </button>
                 </div>
                 <div className="flex gap-3 pt-4 border-t border-white/5">
-                  <button onClick={handleSave} className="px-6 py-3 bg-primary-container text-on-primary-container font-bold rounded-xl hover:shadow-[0_0_20px_rgba(212,255,58,0.3)] transition-all">Enregistrer</button>
+                  <button onClick={handleSave} className="px-6 py-3 bg-primary-container text-on-primary-container font-bold rounded-xl hover:shadow-[0_0_20px_rgba(212,255,58,0.3)] transition-all">{t.settings.saveButton}</button>
                 </div>
               </div>
             )}
@@ -131,80 +160,243 @@ export default function SettingsPage() {
             {activeTab === 'fournisseurs' && (
               <div className="space-y-6">
                 <div className="bg-surface-container-low rounded-2xl border border-white/5 p-8">
-                  <h2 className="font-headline font-bold text-xl text-on-surface mb-1">Fournisseur par défaut</h2>
-                  <p className="text-sm text-on-surface-variant mb-6">Utilisé automatiquement lors de la génération de devis.</p>
+                  <h2 className="font-headline font-bold text-xl text-on-surface mb-1">{t.settings.defaultSupplierTitle}</h2>
+                  <p className="text-sm text-on-surface-variant mb-6">{t.settings.defaultSupplierDesc}</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {SUPPLIERS.filter(s => s.id !== 'auto').map(s => (
                       <button key={s.id} onClick={() => setDefaultSupplier(s.id)} className={`p-4 rounded-2xl border text-left transition-all duration-300 ${defaultSupplier === s.id ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(212,255,58,0.15)]' : 'border-white/5 bg-surface-container hover:border-primary/30'}`}>
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 font-headline font-black text-xs ${defaultSupplier === s.id ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface'}`}>{s.initials}</div>
                         <div className="font-bold text-sm text-on-surface">{s.name}</div>
                         <div className="text-[10px] text-on-surface-variant mt-0.5">{s.sub}</div>
-                        {defaultSupplier === s.id && <div className="mt-2 text-[9px] font-bold text-primary uppercase tracking-widest">✓ Actif</div>}
+                        {defaultSupplier === s.id && <div className="mt-2 text-[9px] font-bold text-primary uppercase tracking-widest">{t.settings.activeMarker}</div>}
                       </button>
                     ))}
                   </div>
-                  <button onClick={handleSave} className="mt-6 px-6 py-3 bg-primary-container text-on-primary-container font-bold rounded-xl hover:shadow-[0_0_20px_rgba(212,255,58,0.3)] transition-all">Enregistrer</button>
+                  <button onClick={handleSave} className="mt-6 px-6 py-3 bg-primary-container text-on-primary-container font-bold rounded-xl hover:shadow-[0_0_20px_rgba(212,255,58,0.3)] transition-all">{t.settings.saveButton}</button>
                 </div>
                 <div className="bg-surface-container-low rounded-2xl border border-outline-variant/10 p-8">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h2 className="font-headline font-bold text-xl text-on-surface mb-1">Compte fournisseur</h2>
-                      <p className="text-sm text-on-surface-variant">Connectez votre compte pour accéder à vos prix remisés automatiquement.</p>
-                    </div>
-                    <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">Bientôt</span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {SUPPLIERS.filter(s => s.id !== 'auto').map(s => (
-                      <div key={s.id} className="p-4 rounded-xl border border-outline-variant/10 bg-surface-container opacity-60">
-                        <div className="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center font-headline font-black text-[9px] mb-2">{s.initials}</div>
-                        <div className="text-sm font-bold text-on-surface-variant">{s.name}</div>
-                        <div className="mt-2 text-[10px] text-on-surface-variant border border-outline-variant/20 rounded-lg px-2 py-1 text-center">Connecter</div>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-4 text-xs text-on-surface-variant">💡 Vos remises personnelles seront appliquées automatiquement lors de la génération de devis.</p>
+                  {(() => {
+                    const connectable = SUPPLIERS.filter(s => s.id !== 'auto')
+                    const connected   = connectable.filter(s => supplierAccounts[s.id]?.status === 'connected')
+                    const avgDiscountFor = (a: SupplierAccount | undefined) => {
+                      if (!a) return 0
+                      const vals = Object.values(a.discountByFamily)
+                      return vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : 0
+                    }
+                    const avgDiscount = connected.length
+                      ? Math.round(connected.reduce((sum, s) => sum + avgDiscountFor(supplierAccounts[s.id]), 0) / connected.length)
+                      : 0
+                    return (
+                      <>
+                        <div className="flex items-start justify-between mb-6 gap-4">
+                          <div>
+                            <h2 className="font-headline font-bold text-xl text-on-surface mb-1">Comptes fournisseurs</h2>
+                            <p className="text-sm text-on-surface-variant">Connectez vos comptes pour appliquer automatiquement vos prix remisés.</p>
+                          </div>
+                          {connected.length > 0 && (
+                            <div className="px-4 py-2 rounded-xl bg-primary/10 border border-primary/20 text-right shrink-0">
+                              <div className="text-[10px] font-bold uppercase tracking-widest text-primary">Connectés</div>
+                              <div className="text-sm font-headline font-bold text-on-surface">
+                                {connected.length}/{connectable.length}
+                                <span className="ml-2 text-[11px] font-mono text-primary">−{avgDiscount}% moy.</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {connectable.map(s => {
+                            const acc = supplierAccounts[s.id]
+                            const isOn = acc?.status === 'connected'
+                            return (
+                              <div
+                                key={s.id}
+                                className={`group p-4 rounded-xl border transition-all ${
+                                  isOn
+                                    ? 'border-primary/30 bg-primary/[0.04]'
+                                    : 'border-outline-variant/10 bg-surface-container hover:border-primary/20'
+                                }`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-headline font-black text-[10px] shrink-0 ${
+                                    isOn ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface'
+                                  }`}>
+                                    {s.initials}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <div className="text-sm font-bold text-on-surface truncate">{s.name}</div>
+                                      {isOn && (
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest bg-primary/10 text-primary">
+                                          <span className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+                                          Actif
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[10px] text-on-surface-variant truncate">
+                                      {isOn
+                                        ? `${acc!.channel === 'fabdis' ? 'Catalogue FAB-DIS' : acc!.channel === 'invoice_ocr' ? 'Factures OCR' : 'Remise'} · −${avgDiscountFor(acc)}% moy.`
+                                        : s.sub}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="mt-3 flex items-center gap-2">
+                                  {isOn ? (
+                                    <>
+                                      <button
+                                        onClick={() => { setConnectModalId(s.id); setConnectModalOpen(true) }}
+                                        className="flex-1 px-3 py-1.5 rounded-lg border border-outline-variant/20 bg-surface-container text-on-surface-variant hover:text-on-surface hover:border-primary/30 text-[10px] font-bold uppercase tracking-widest transition-all"
+                                      >
+                                        Modifier
+                                      </button>
+                                      <button
+                                        onClick={() => { disconnectSupplier(s.id); setToast({ message: `Compte ${s.name} déconnecté.`, type: 'info' }) }}
+                                        className="px-3 py-1.5 rounded-lg border border-outline-variant/20 bg-surface-container text-on-surface-variant hover:text-red-400 hover:border-red-500/30 text-[10px] font-bold uppercase tracking-widest transition-all"
+                                      >
+                                        Déconnecter
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() => { setConnectModalId(s.id); setConnectModalOpen(true) }}
+                                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-container text-on-primary-container text-[10px] font-black uppercase tracking-widest hover:shadow-[0_0_16px_rgba(212,255,58,0.3)] transition-all"
+                                    >
+                                      <span className="material-symbols-outlined text-sm">link</span>
+                                      Connecter
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <div className="mt-5 flex items-center gap-2 text-xs text-on-surface-variant">
+                          <span className="material-symbols-outlined text-sm">shield</span>
+                          <span>Chiffré de bout en bout. Vos identifiants restent sur votre espace sécurisé.</span>
+                        </div>
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
             )}
 
-            {activeTab === 'abonnement' && (
-              <div className="space-y-6">
-                <div className="bg-surface-container-low rounded-2xl border border-primary/30 shadow-[0_0_40px_rgba(212,255,58,0.08)] p-8">
-                  <div className="flex items-start justify-between mb-6">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /><span className="text-emerald-400 text-[10px] font-bold uppercase tracking-widest">Actif</span></div>
-                      <h2 className="font-headline font-black text-3xl text-on-surface">Plan Pro</h2>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-3xl font-headline font-black text-white">450 €<span className="text-lg text-on-surface-variant"> / an</span></div>
-                      <div className="text-xs text-on-surface-variant mt-1">Renouvellement le 15 avril 2027</div>
-                    </div>
-                  </div>
-                  <ul className="space-y-3 mb-6">
-                    {['Devis illimités', '4 fournisseurs inclus (CDO, Pim Plastic, Richardson, Marplin)', 'Export PDF', 'Analyse CCTP automatique', 'Support inclus', 'Compte fournisseur — prix remisés (V2)'].map(f => (
-                      <li key={f} className="flex items-center gap-2 text-sm text-on-surface-variant">
-                        <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>{f}
-                      </li>
-                    ))}
-                  </ul>
-                  <button onClick={() => setToast({ message: 'Portail de facturation bientôt disponible.', type: 'info' })} className="px-6 py-3 border border-outline-variant/20 bg-surface-container text-on-surface font-bold rounded-xl hover:bg-surface-container-high transition-all text-sm">Gérer l'abonnement</button>
-                </div>
-                <div className="bg-surface-container-low rounded-2xl border border-white/5 p-8">
-                  <h3 className="font-headline font-bold text-lg mb-5">Historique de facturation</h3>
-                  <div className="space-y-3">
-                    {[{ date: '15 avr. 2026', amount: '450,00 €' }, { date: '15 avr. 2025', amount: '450,00 €' }].map(b => (
-                      <div key={b.date} className="flex items-center justify-between p-4 bg-surface-container rounded-xl border border-outline-variant/10">
-                        <div><span className="text-sm text-on-surface font-medium">{b.date}</span><span className="ml-3 text-[10px] text-emerald-400 font-bold">Payé</span></div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-mono text-on-surface">{b.amount}</span>
-                          <button onClick={() => setToast({ message: 'Facture téléchargée.', type: 'success' })} className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary transition-colors"><span className="material-symbols-outlined text-sm">download</span></button>
+            {activeTab === 'abonnement' && sub && (() => {
+              const onTrial   = sub.plan === 'trial'
+              const trialLeft = remainingTrialQuotes()
+              const activePaid = PAID_PLANS.find(p => p.id === sub.plan)
+              const activatedDate = sub.activatedAt
+                ? new Date(sub.activatedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                : null
+
+              return (
+                <div className="space-y-6">
+                  {onTrial ? (
+                    <div className="bg-surface-container-low rounded-2xl border border-primary/30 shadow-[0_0_40px_rgba(212,255,58,0.08)] p-8">
+                      <div className="flex items-start justify-between mb-6">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                            <span className="text-amber-400 text-[10px] font-bold uppercase tracking-widest">Essai</span>
+                          </div>
+                          <h2 className="font-headline font-black text-3xl text-on-surface">Plan d&rsquo;essai gratuit</h2>
+                          <p className="text-sm text-on-surface-variant mt-1">
+                            {trialLeft > 0
+                              ? `Il vous reste ${trialLeft} devis gratuit${trialLeft > 1 ? 's' : ''}.`
+                              : 'Votre devis gratuit est utilisé — passez à un plan payant pour continuer.'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-3xl font-headline font-black text-white">0 €</div>
+                          <div className="text-xs text-on-surface-variant mt-1">Sans carte de crédit</div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      <ul className="space-y-3 mb-6">
+                        {['1 devis gratuit', 'Analyse CCTP automatique', 'Export PDF'].map(f => (
+                          <li key={f} className="flex items-center gap-2 text-sm text-on-surface-variant">
+                            <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>{f}
+                          </li>
+                        ))}
+                      </ul>
+                      <button
+                        onClick={() => setShowPaywall(true)}
+                        className="px-6 py-3 bg-primary text-on-primary font-headline font-black uppercase tracking-[0.15em] text-sm rounded-xl hover:shadow-[0_0_30px_rgba(212,255,58,0.45)] transition-all"
+                      >
+                        Choisir un plan
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-surface-container-low rounded-2xl border border-primary/30 shadow-[0_0_40px_rgba(212,255,58,0.08)] p-8">
+                      <div className="flex items-start justify-between mb-6">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-widest">Actif</span>
+                          </div>
+                          <h2 className="font-headline font-black text-3xl text-on-surface">
+                            Plan {activePaid?.name ?? sub.plan}
+                          </h2>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-3xl font-headline font-black text-white">
+                            {activePaid?.price ?? '—'}
+                            {activePaid?.per && <span className="text-lg text-on-surface-variant"> {activePaid.per}</span>}
+                          </div>
+                          {activatedDate && (
+                            <div className="text-xs text-on-surface-variant mt-1">Actif depuis le {activatedDate}</div>
+                          )}
+                        </div>
+                      </div>
+                      <ul className="space-y-3 mb-6">
+                        {(activePaid?.features ?? ['Devis illimités']).map(f => (
+                          <li key={f} className="flex items-center gap-2 text-sm text-on-surface-variant">
+                            <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>{f}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={() => setShowPaywall(true)}
+                          className="px-6 py-3 border border-outline-variant/20 bg-surface-container text-on-surface font-bold rounded-xl hover:bg-surface-container-high transition-all text-sm"
+                        >
+                          Changer de plan
+                        </button>
+                        <button
+                          onClick={() => { downgradeToTrial(); setToast({ message: 'Abonnement annulé. Retour à l\u2019essai.', type: 'info' }) }}
+                          className="px-6 py-3 border border-red-500/30 text-red-400 font-bold rounded-xl hover:bg-red-500/10 transition-all text-sm"
+                        >
+                          Annuler l&rsquo;abonnement
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!onTrial && (
+                    <div className="bg-surface-container-low rounded-2xl border border-white/5 p-8">
+                      <h3 className="font-headline font-bold text-lg mb-5">Historique de facturation</h3>
+                      <div className="space-y-3">
+                        {[{ date: activatedDate ?? '—', amount: activePaid?.price ?? '—' }].map((b, i) => (
+                          <div key={i} className="flex items-center justify-between p-4 bg-surface-container rounded-xl border border-outline-variant/10">
+                            <div>
+                              <span className="text-sm text-on-surface font-medium">{b.date}</span>
+                              <span className="ml-3 text-[10px] text-emerald-400 font-bold">Payé</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-mono text-on-surface">{b.amount}</span>
+                              <button
+                                onClick={() => setToast({ message: 'Facture téléchargée.', type: 'success' })}
+                                className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-sm">download</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             {activeTab === 'securite' && (
               <div className="space-y-6">
@@ -273,6 +465,21 @@ export default function SettingsPage() {
           </Animate>
         </div>
       </div>
+
+      {connectModalOpen && (
+        <SupplierConnectModal
+          initialSupplierId={connectModalId ?? undefined}
+          onClose={() => { setConnectModalOpen(false); setConnectModalId(null) }}
+        />
+      )}
+
+      {showPaywall && (
+        <PaywallModal
+          onClose={() => setShowPaywall(false)}
+          onSubscribed={() => setToast({ message: 'Abonnement activé.', type: 'success' })}
+          reason={sub?.plan === 'trial' ? 'trial-used' : 'upgrade'}
+        />
+      )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </AppLayout>

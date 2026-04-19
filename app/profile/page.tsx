@@ -20,12 +20,12 @@ const USER = {
   initials:  'JB',
 }
 
-const STATS = [
-  { label: { fr: 'Devis générés',    en: 'Quotes generated' }, value: '127', icon: 'description',      trend: '+12 ce mois-ci', color: 'primary'  },
-  { label: { fr: 'Projets actifs',   en: 'Active projects'  }, value: '14',  icon: 'foundation',       trend: '3 en revue',      color: 'on-surface' },
-  { label: { fr: 'Taux de conformité', en: 'Compliance rate' }, value: '98%', icon: 'verified',        trend: '+2% vs. N-1',     color: 'emerald' },
-  { label: { fr: 'CA estimé (30j)',  en: 'Est. revenue (30d)' }, value: '42k€', icon: 'trending_up',    trend: '+18% vs. mois-1', color: 'primary'  },
-]
+const STATS_CONFIG = [
+  { key: 'statsQuotes',     value: '127',  icon: 'description', trend: '+12 ce mois-ci',   color: 'primary'    },
+  { key: 'statsProjects',   value: '14',   icon: 'foundation',  trend: '3 en revue',        color: 'on-surface' },
+  { key: 'statsCompliance', value: '98%',  icon: 'verified',    trend: '+2% vs. N-1',       color: 'emerald'    },
+  { key: 'statsRevenue',    value: '42k€', icon: 'trending_up', trend: '+18% vs. mois-1',   color: 'primary'    },
+] as const
 
 const ACTIVITY = [
   { time: 'Il y a 2 h',    icon: 'description',   text: 'Devis',                    highlight: 'PRJ-992-DELTA', meta: 'généré depuis CCTP' },
@@ -35,18 +35,17 @@ const ACTIVITY = [
   { time: 'Il y a 5 j',    icon: 'credit_card',   text: 'Facture',                  highlight: '450,00 €',      meta: 'payée — Plan Pro' },
 ]
 
-const SHORTCUTS = [
-  { href: '/settings',                     icon: 'person',        label: { fr: 'Informations',   en: 'Info' } },
-  { href: '/settings',                     icon: 'storefront',    label: { fr: 'Fournisseurs',   en: 'Suppliers' } },
-  { href: '/settings',                     icon: 'credit_card',   label: { fr: 'Abonnement',     en: 'Billing' } },
-  { href: '/settings',                     icon: 'lock',          label: { fr: 'Sécurité',       en: 'Security' } },
-  { href: '/settings',                     icon: 'notifications', label: { fr: 'Notifications',  en: 'Notifications' } },
-]
+const SHORTCUTS_CONFIG = [
+  { href: '/settings', icon: 'person',        key: 'shortcutInfo' },
+  { href: '/settings', icon: 'storefront',    key: 'shortcutSuppliers' },
+  { href: '/settings', icon: 'credit_card',   key: 'shortcutBilling' },
+  { href: '/settings', icon: 'lock',          key: 'shortcutSecurity' },
+  { href: '/settings', icon: 'notifications', key: 'shortcutNotifications' },
+] as const
 
 export default function ProfilePage() {
-  const { locale } = useLanguage()
+  const { t } = useLanguage()
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
-  const lang = <F extends { fr: string; en: string }>(s: F) => s[locale]
 
   return (
     <AppLayout>
@@ -71,7 +70,7 @@ export default function ProfilePage() {
 
               <div className="flex-1 min-w-0">
                 <span className="text-primary font-headline font-bold tracking-widest text-[10px] uppercase">
-                  {locale === 'fr' ? 'Compte vérifié' : 'Verified account'}
+                  {t.profile.verifiedAccount}
                 </span>
                 <h1 className="text-3xl md:text-4xl font-headline font-black tracking-tighter text-on-surface mt-1">
                   {USER.firstName} {USER.lastName}
@@ -101,13 +100,13 @@ export default function ProfilePage() {
                   href="/settings"
                   className="px-5 py-3 bg-primary-container text-on-primary-container font-bold rounded-xl hover:shadow-[0_0_20px_rgba(212,255,58,0.3)] transition-all text-sm text-center whitespace-nowrap"
                 >
-                  {locale === 'fr' ? 'Modifier le profil' : 'Edit profile'}
+                  {t.profile.editProfile}
                 </Link>
                 <button
-                  onClick={() => setToast({ message: locale === 'fr' ? 'Lien partagé.' : 'Profile link copied.', type: 'success' })}
+                  onClick={() => setToast({ message: t.profile.shareSuccess, type: 'success' })}
                   className="px-5 py-3 border border-outline-variant/20 bg-surface-container text-on-surface font-bold rounded-xl hover:bg-surface-container-high transition-all text-sm whitespace-nowrap"
                 >
-                  {locale === 'fr' ? 'Partager' : 'Share'}
+                  {t.profile.share}
                 </button>
               </div>
             </div>
@@ -116,8 +115,8 @@ export default function ProfilePage() {
 
         {/* Stats */}
         <Animate variant="fade-up" delay={60} as="section" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {STATS.map(s => (
-            <div key={s.label.en} className="group relative overflow-hidden bg-surface-container-low rounded-2xl border border-white/5 p-5 hover:border-primary/20 transition-all">
+          {STATS_CONFIG.map(s => (
+            <div key={s.key} className="group relative overflow-hidden bg-surface-container-low rounded-2xl border border-white/5 p-5 hover:border-primary/20 transition-all">
               <div className="flex items-start justify-between mb-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                   s.color === 'primary' ? 'bg-primary/15 text-primary' :
@@ -128,7 +127,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="text-3xl font-headline font-black text-on-surface tracking-tighter">{s.value}</div>
-              <div className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mt-1">{lang(s.label)}</div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mt-1">{t.profile[s.key]}</div>
               <div className="text-[10px] text-on-surface-variant/70 mt-2">{s.trend}</div>
             </div>
           ))}
@@ -143,14 +142,14 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="font-headline font-bold text-xl text-on-surface">
-                    {locale === 'fr' ? 'Activité récente' : 'Recent activity'}
+                    {t.profile.recentActivityTitle}
                   </h2>
                   <p className="text-sm text-on-surface-variant mt-0.5">
-                    {locale === 'fr' ? 'Les 30 derniers événements de votre compte.' : 'Your last 30 account events.'}
+                    {t.profile.recentActivityDesc}
                   </p>
                 </div>
                 <Link href="/dashboard" className="text-xs font-bold text-primary hover:text-white transition-colors tracking-widest uppercase">
-                  {locale === 'fr' ? 'Tout voir' : 'See all'}
+                  {t.profile.seeAll}
                 </Link>
               </div>
 
@@ -181,7 +180,7 @@ export default function ProfilePage() {
             <div className="bg-surface-container-low rounded-2xl border border-white/5 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-headline font-bold text-base text-on-surface">
-                  {locale === 'fr' ? 'Complétude du profil' : 'Profile completion'}
+                  {t.profile.profileCompletionTitle}
                 </h3>
                 <span className="text-primary font-headline font-black text-lg">80%</span>
               </div>
@@ -190,11 +189,11 @@ export default function ProfilePage() {
               </div>
               <ul className="space-y-2.5">
                 {[
-                  { label: locale === 'fr' ? 'Coordonnées'   : 'Contact info',    done: true  },
-                  { label: locale === 'fr' ? 'Société'       : 'Company',         done: true  },
-                  { label: locale === 'fr' ? 'Moyen de paiement' : 'Payment method', done: true  },
-                  { label: locale === 'fr' ? 'Logo société'  : 'Company logo',    done: false },
-                  { label: locale === 'fr' ? '2FA activé'    : '2FA enabled',     done: false },
+                  { label: t.profile.completionContact, done: true  },
+                  { label: t.profile.completionCompany, done: true  },
+                  { label: t.profile.completionPayment, done: true  },
+                  { label: t.profile.completionLogo,    done: false },
+                  { label: t.profile.completion2FA,     done: false },
                 ].map(i => (
                   <li key={i.label} className="flex items-center gap-2 text-xs">
                     <span className={`material-symbols-outlined text-[16px] ${i.done ? 'text-primary' : 'text-on-surface-variant/40'}`} style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -209,13 +208,13 @@ export default function ProfilePage() {
             {/* Shortcuts */}
             <div className="bg-surface-container-low rounded-2xl border border-white/5 p-6">
               <h3 className="font-headline font-bold text-base text-on-surface mb-4">
-                {locale === 'fr' ? 'Raccourcis' : 'Shortcuts'}
+                {t.profile.shortcutsTitle}
               </h3>
               <nav className="space-y-1">
-                {SHORTCUTS.map(s => (
-                  <Link key={s.icon} href={s.href} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors group">
+                {SHORTCUTS_CONFIG.map(s => (
+                  <Link key={s.key} href={s.href} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors group">
                     <span className="material-symbols-outlined text-[18px] text-on-surface-variant group-hover:text-primary transition-colors">{s.icon}</span>
-                    <span className="flex-1">{lang(s.label)}</span>
+                    <span className="flex-1">{t.profile[s.key]}</span>
                     <span className="material-symbols-outlined text-[16px] text-on-surface-variant/40">chevron_right</span>
                   </Link>
                 ))}
@@ -229,7 +228,7 @@ export default function ProfilePage() {
               </div>
               <div className="min-w-0">
                 <div className="text-[11px] uppercase font-bold tracking-widest text-on-surface-variant">
-                  {locale === 'fr' ? 'Membre depuis' : 'Member since'}
+                  {t.profile.memberSince}
                 </div>
                 <div className="text-sm font-semibold text-on-surface truncate">{USER.joined}</div>
               </div>

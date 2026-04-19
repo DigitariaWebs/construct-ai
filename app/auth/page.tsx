@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useLanguage } from '@/contexts/LanguageContext'
 import Animate from '@/components/Animate'
+import { initTrial } from '@/lib/subscription'
 
 type Mode = 'login' | 'signup'
 
@@ -26,8 +27,10 @@ export default function AuthPage() {
 
     setIsSubmitting(true)
     localStorage.setItem('df_auth_session', 'active')
+    if (mode === 'signup') initTrial()
+    const next = mode === 'signup' ? '/onboarding/suppliers' : '/dashboard'
     setTimeout(() => {
-      router.push('/dashboard')
+      router.push(next)
     }, 600) // Brief animation delay before redirect
   }
 
@@ -47,7 +50,7 @@ export default function AuthPage() {
                 <span className="material-symbols-outlined text-on-surface text-2xl">architecture</span>
               </div>
               <span className="font-headline font-bold text-3xl tracking-tight text-white">
-                Digital Foreman
+                Plombier Chiffrage
               </span>
             </Link>
           </Animate>

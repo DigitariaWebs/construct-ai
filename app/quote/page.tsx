@@ -11,6 +11,12 @@ import { SUPPLIERS, SESSION_KEY, type Supplier } from '@/lib/suppliers'
 import { loadStoredQuote } from '@/lib/quote/store'
 import { itemsToRows, visualForCategory } from '@/lib/quote/pricing'
 import type { ExtractedQuote } from '@/lib/quote/types'
+import SupplierConnectModal from '@/components/SupplierConnectModal'
+import { getAllAccounts, subscribeAccounts, emptyDiscounts, type SupplierAccount } from '@/lib/supplierAccounts'
+import { getEntriesBySupplier, subscribeCatalog } from '@/lib/catalog/store'
+import { matchItem, methodLabel, methodTier } from '@/lib/catalog/matching'
+import type { CatalogEntry, MatchMethod } from '@/lib/catalog/types'
+import { unitPriceFor } from '@/lib/quote/pricing'
 
 type Row = {
   icon: string
@@ -23,6 +29,8 @@ type Row = {
   unitNum: number
   category: string
   uncertain?: boolean
+  matchMethod?: MatchMethod
+  matchScore?: number
 }
 
 const MAT_META: Omit<Row, 'unitNum'>[] = [
@@ -189,6 +197,41 @@ function buildRowsFromExtracted(quote: ExtractedQuote, prices: Supplier['prices'
   return itemsToRows(quote.items, prices).map(({ idx, ...rest }) => rest)
 }
 
+/**
+ * Quote rows using the plumber's ingested catalog + per-family discount matrix,
+ * with the static supplier price table as the last-resort public fallback.
+ * Attaches matchMethod + matchScore so the UI can show a confidence badge per line.
+ */
+function buildRowsFromCatalog(
+  quote: ExtractedQuote,
+  prices: Supplier['prices'],
+  entries: CatalogEntry[],
+  discountByFamily: Record<import('@/lib/catalog/types').Family, number>,
+): Row[] {
+  return quote.items.map((item) => {
+    const v = visualForCategory(item.category)
+    const m = matchItem(item, {
+      entries,
+      discountByFamily,
+      publicTariffFallback: (it) => unitPriceFor(it, prices),
+    })
+    return {
+      icon: v.icon,
+      iconBg: v.iconBg,
+      iconColor: v.iconColor,
+      name: item.name,
+      sub: item.description || item.reference || '',
+      qtyNum: item.quantity,
+      qtyUnit: item.unit,
+      unitNum: m.unitPriceHT,
+      category: item.category,
+      uncertain: item.uncertain,
+      matchMethod: m.method,
+      matchScore: m.score,
+    }
+  })
+}
+
 function colorForCategory(category: string): string {
   return visualForCategory(category).catColor
 }
@@ -202,27 +245,55 @@ export default function QuotePage() {
   const [downloading, setDownloading] = useState(false)
   const [selectedSupplierId, setSelectedSupplierId] = useState('auto')
   const [isEditing, setIsEditing]     = useState(false)
+  const [supplierAccounts, setSupplierAccounts] = useState<Record<string, SupplierAccount>>({})
+  const [showConnectModal, setShowConnectModal] = useState(false)
   const [extracted, setExtracted]     = useState<ExtractedQuote | null>(null)
+  const [catalogEntries, setCatalogEntries] = useState<CatalogEntry[]>([])
   const [rows, setRows]               = useState<Row[]>(buildRows(SUPPLIERS[0].prices))
   const [draft, setDraft]             = useState<Row[]>(buildRows(SUPPLIERS[0].prices))
 
   useEffect(() => {
     const saved    = sessionStorage.getItem(SESSION_KEY)
     const supplier = (saved && SUPPLIERS.find(s => s.id === saved)) || SUPPLIERS[0]
-
     const stored = loadStoredQuote()
-    if (stored && stored.quote.items.length > 0) {
-      setExtracted(stored.quote)
-      const built = buildRowsFromExtracted(stored.quote, supplier.prices)
-      setRows(built)
-      setDraft(built.map(r => ({ ...r })))
-    } else if (saved && saved !== 'auto') {
-      const built = buildRows(supplier.prices)
-      setRows(built)
-      setDraft(built)
-    }
+    if (stored && stored.quote.items.length > 0) setExtracted(stored.quote)
     setSelectedSupplierId(supplier.id)
   }, [])
+
+  useEffect(() => {
+    setSupplierAccounts(getAllAccounts())
+    return subscribeAccounts(s => setSupplierAccounts({ ...s }))
+  }, [])
+
+  // Load catalog entries for the selected supplier + refresh on catalog changes.
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      const list = selectedSupplierId && selectedSupplierId !== 'auto'
+        ? await getEntriesBySupplier(selectedSupplierId)
+        : []
+      if (!cancelled) setCatalogEntries(list)
+    }
+    load()
+    const unsub = subscribeCatalog(() => load())
+    return () => { cancelled = true; unsub() }
+  }, [selectedSupplierId])
+
+  // Rebuild rows whenever extracted quote, supplier, catalog, or account discounts change.
+  useEffect(() => {
+    const supplier = SUPPLIERS.find(s => s.id === selectedSupplierId) || SUPPLIERS[0]
+    const account  = supplierAccounts[selectedSupplierId]
+    const discounts = account?.discountByFamily ?? emptyDiscounts()
+    let built: Row[]
+    if (extracted && extracted.items.length > 0) {
+      built = buildRowsFromCatalog(extracted, supplier.prices, catalogEntries, discounts)
+    } else {
+      built = buildRows(supplier.prices)
+    }
+    setRows(built)
+    if (!isEditing) setDraft(built.map(r => ({ ...r })))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extracted, selectedSupplierId, catalogEntries, supplierAccounts])
 
   const calcTotals = (r: Row[]) => {
     const materialsHT = r.reduce((s, row) => s + row.qtyNum * row.unitNum, 0)
@@ -238,6 +309,9 @@ export default function QuotePage() {
   const supplierComparisons = useMemo(() => {
     const qtys = rows.map(r => r.qtyNum)
     return SUPPLIERS.map(s => {
+      // Comparison row always uses the public tariff fallback — we don't refetch
+      // each supplier's catalog just for the comparison pane; the selected
+      // supplier's real catalog prices already show in `rows`.
       const built = extracted ? buildRowsFromExtracted(extracted, s.prices) : buildRows(s.prices)
       return { ...s, computedTotal: built.reduce((sum, r, i) => sum + (qtys[i] ?? r.qtyNum) * r.unitNum, 0) }
     })
@@ -247,9 +321,6 @@ export default function QuotePage() {
 
   const selectSupplier = (s: Supplier) => {
     if (s.id === selectedSupplierId) return
-    const newRows = extracted ? buildRowsFromExtracted(extracted, s.prices) : buildRows(s.prices)
-    setRows(newRows)
-    setDraft(newRows.map(r => ({ ...r })))
     setSelectedSupplierId(s.id)
     setToast({ message: `Prix ${s.name} appliqués.`, type: 'success' })
   }
@@ -324,10 +395,10 @@ export default function QuotePage() {
         {isEditing && (
           <div className="mb-6 flex items-center gap-3 px-5 py-3 rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-400">
             <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>edit_note</span>
-            <span className="text-xs font-bold uppercase tracking-widest">Mode édition — non enregistré</span>
+            <span className="text-xs font-bold uppercase tracking-widest">{t.quote.editModeBanner}</span>
             <div className="ml-auto flex gap-2">
-              <button onClick={cancelEdit} className="px-4 py-1.5 rounded-lg border border-amber-500/20 text-xs font-bold text-amber-400/70 hover:text-amber-400 transition-colors">Annuler</button>
-              <button onClick={saveEdit}   className="px-4 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-xs font-bold text-amber-400 hover:bg-amber-500/30 transition-colors">Enregistrer</button>
+              <button onClick={cancelEdit} className="px-4 py-1.5 rounded-lg border border-amber-500/20 text-xs font-bold text-amber-400/70 hover:text-amber-400 transition-colors">{t.common.cancel}</button>
+              <button onClick={saveEdit}   className="px-4 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-xs font-bold text-amber-400 hover:bg-amber-500/30 transition-colors">{t.quote.save}</button>
             </div>
           </div>
         )}
@@ -337,12 +408,12 @@ export default function QuotePage() {
             <div>
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-primary font-mono text-xs tracking-widest uppercase font-bold">Devis généré</span>
+                <span className="text-primary font-mono text-xs tracking-widest uppercase font-bold">{t.quote.generated}</span>
                 <span className="h-px w-6 bg-outline-variant/40" />
                 <span className="text-tertiary font-mono text-xs uppercase truncate">{extracted?.lot || 'Lot 09 — Plomberie · Chauffage · VMC'}</span>
                 {extracted && (
                   <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                    Confiance {Math.round(extracted.confidence * 100)}%
+                    {t.quote.confidence} {Math.round(extracted.confidence * 100)}%
                   </span>
                 )}
               </div>
@@ -350,7 +421,7 @@ export default function QuotePage() {
                 {extracted?.projectName || (<>Votre devis <span className="text-primary-container">#PRJ-829</span></>)}
               </h1>
               <p className="mt-2 text-on-surface-variant max-w-xl text-base leading-relaxed">
-                {extracted?.summary || 'Devis généré depuis votre CCTP. Vérifiez les quantités et ajustez si besoin.'}
+                {extracted?.summary || t.quote.extractedFallback}
               </p>
               {extracted && extracted.notes.length > 0 && (
                 <ul className="mt-3 space-y-1 max-w-xl">
@@ -367,15 +438,15 @@ export default function QuotePage() {
               {isEditing ? (
                 <>
                   <button onClick={cancelEdit} className="px-5 py-2.5 rounded-xl border border-outline-variant/20 bg-surface-container-low text-on-surface-variant text-sm font-semibold hover:bg-surface-container-high transition-colors flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm">close</span>Annuler
+                    <span className="material-symbols-outlined text-sm">close</span>{t.common.cancel}
                   </button>
                   <button onClick={saveEdit} className="px-5 py-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/20 transition-colors flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm">check</span>Enregistrer
+                    <span className="material-symbols-outlined text-sm">check</span>{t.quote.save}
                   </button>
                 </>
               ) : (
                 <button onClick={startEdit} className="px-5 py-2.5 rounded-xl border border-outline-variant/20 bg-surface-container-low text-on-surface text-sm font-semibold hover:bg-surface-container-high transition-colors flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm">edit</span>Modifier
+                  <span className="material-symbols-outlined text-sm">edit</span>{t.quote.edit}
                 </button>
               )}
               <button
@@ -384,7 +455,7 @@ export default function QuotePage() {
                 className="px-5 py-2.5 rounded-xl border border-outline-variant/20 bg-surface-container-low text-on-surface text-sm font-semibold hover:bg-surface-container-high transition-colors flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {downloading ? <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-sm">download</span>}
-                {downloading ? 'Génération…' : 'Télécharger PDF'}
+                {downloading ? t.quote.generating : t.quote.download}
               </button>
             </div>
           </div>
@@ -487,8 +558,11 @@ export default function QuotePage() {
                                     <div className={`w-9 h-9 rounded-xl ${m.iconBg} flex items-center justify-center shrink-0`}>
                                       <span className={`material-symbols-outlined text-sm ${m.iconColor}`}>{m.icon}</span>
                                     </div>
-                                    <div>
-                                      <div className="text-sm font-semibold text-on-surface">{m.name}</div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <div className="text-sm font-semibold text-on-surface">{m.name}</div>
+                                        {m.matchMethod && <MatchBadge method={m.matchMethod} score={m.matchScore ?? 0} />}
+                                      </div>
                                       <div className="text-[10px] text-outline max-w-[240px] truncate">{m.sub}</div>
                                     </div>
                                   </div>
@@ -672,21 +746,76 @@ export default function QuotePage() {
               </div>
               <div className="space-y-3">
                 {[
-                  { label: 'Poste par poste',           ok: true  },
-                  { label: 'Prix unitaires HT',          ok: true  },
-                  { label: 'TVA 20% appliquée',          ok: true  },
-                  { label: 'Fournisseur identifié',      ok: true  },
-                  { label: 'Compte fournisseur (V2)',    ok: false, soon: true },
+                  { label: 'Poste par poste',      ok: true },
+                  { label: 'Prix unitaires HT',     ok: true },
+                  { label: 'TVA 20% appliquée',     ok: true },
+                  { label: 'Fournisseur identifié', ok: true },
                 ].map(item => (
                   <div key={item.label} className="flex items-center gap-2">
-                    <span className={`material-symbols-outlined text-sm ${item.ok ? 'text-emerald-400' : 'text-outline'}`} style={{ fontVariationSettings: "'FILL' 1" }}>
-                      {item.ok ? 'check_circle' : 'radio_button_unchecked'}
-                    </span>
-                    <span className={`text-xs ${item.ok ? 'text-on-surface' : 'text-on-surface-variant'}`}>{item.label}</span>
-                    {item.soon && <span className="ml-auto text-[9px] text-outline uppercase tracking-widest">Bientôt</span>}
+                    <span className="material-symbols-outlined text-sm text-emerald-400" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    <span className="text-xs text-on-surface">{item.label}</span>
                   </div>
                 ))}
+                {(() => {
+                  const acc = supplierAccounts[selectedSupplierId]
+                  const isConnected = acc?.status === 'connected'
+                  const channelLabel =
+                    acc?.channel === 'fabdis'      ? 'Catalogue FAB-DIS' :
+                    acc?.channel === 'invoice_ocr' ? 'Factures OCR' :
+                    acc?.channel === 'discount'    ? 'Remise négociée' :
+                    acc?.channel === 'extranet'    ? 'Extranet' : ''
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className={`material-symbols-outlined text-sm ${isConnected ? 'text-emerald-400' : 'text-outline'}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+                        {isConnected ? 'check_circle' : 'radio_button_unchecked'}
+                      </span>
+                      <span className={`text-xs ${isConnected ? 'text-on-surface' : 'text-on-surface-variant'}`}>
+                        {isConnected ? `${currentSupplier.name} · ${channelLabel}` : 'Compte fournisseur'}
+                      </span>
+                      {!isConnected && selectedSupplierId !== 'auto' && (
+                        <button
+                          onClick={() => setShowConnectModal(true)}
+                          className="ml-auto text-[10px] font-bold uppercase tracking-widest text-primary hover:text-white transition-colors"
+                        >
+                          Connecter
+                        </button>
+                      )}
+                      {!isConnected && selectedSupplierId === 'auto' && (
+                        <span className="ml-auto text-[9px] text-outline uppercase tracking-widest">Multi-comptes</span>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
+
+              {/* Match quality strip — show how prices were obtained across the quote */}
+              {(() => {
+                const priced = rows.filter(r => r.matchMethod)
+                if (priced.length === 0) return null
+                const highCount   = priced.filter(r => r.matchMethod && (r.matchMethod === 'exact_code' || r.matchMethod === 'ean' || r.matchMethod === 'normalized_label')).length
+                const mediumCount = priced.filter(r => r.matchMethod === 'fuzzy_trigram' || r.matchMethod === 'discount_fallback').length
+                const lowCount    = priced.filter(r => r.matchMethod === 'public_fallback').length
+                const total = priced.length
+                const pct = (n: number) => total ? Math.round((n / total) * 100) : 0
+                return (
+                  <div className="mt-5 pt-4 border-t border-white/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Origine des prix</span>
+                      <a href="/catalog" className="text-[9px] font-bold uppercase tracking-widest text-primary hover:text-white transition-colors">Mon catalogue →</a>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-surface-container-high overflow-hidden flex">
+                      {highCount   > 0 && <div className="h-full bg-primary"      style={{ width: `${pct(highCount)}%` }} />}
+                      {mediumCount > 0 && <div className="h-full bg-amber-400"    style={{ width: `${pct(mediumCount)}%` }} />}
+                      {lowCount    > 0 && <div className="h-full bg-surface-container-highest" style={{ width: `${pct(lowCount)}%` }} />}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[10px] font-mono">
+                      <span className="text-primary">{highCount} catalogue</span>
+                      <span className="text-amber-400">{mediumCount} heuristique</span>
+                      <span className="text-on-surface-variant">{lowCount} tarif public</span>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             <div className="bg-surface-container-lowest rounded-2xl p-6 border border-white/5 space-y-5">
@@ -712,24 +841,51 @@ export default function QuotePage() {
       </main>
 
       {showApprove && (
-        <Modal title="Confirmer le devis" onClose={() => setShowApprove(false)}>
+        <Modal title={t.quote.confirmTitle} onClose={() => setShowApprove(false)}>
           <div className="space-y-6">
             <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-2">
-              <div className="flex justify-between text-sm"><span className="text-on-surface-variant">Lot</span><span className="text-on-surface font-semibold">09 — Plomberie · Chauffage · VMC</span></div>
-              <div className="flex justify-between text-sm"><span className="text-on-surface-variant">Fournisseur</span><span className="text-on-surface font-semibold">{currentSupplier.name}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-on-surface-variant">Total HT</span><span className="text-on-surface font-semibold font-mono">{fmtEur(totals.subtotalHT)}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-on-surface-variant">Total TTC</span><span className="text-primary font-bold font-mono">{fmtEur(totals.totalTTC)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-on-surface-variant">{t.quote.confirmLot}</span><span className="text-on-surface font-semibold">09 — Plomberie · Chauffage · VMC</span></div>
+              <div className="flex justify-between text-sm"><span className="text-on-surface-variant">{t.quote.confirmSupplier}</span><span className="text-on-surface font-semibold">{currentSupplier.name}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-on-surface-variant">{t.quote.confirmTotalHT}</span><span className="text-on-surface font-semibold font-mono">{fmtEur(totals.subtotalHT)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-on-surface-variant">{t.quote.confirmTotalTTC}</span><span className="text-primary font-bold font-mono">{fmtEur(totals.totalTTC)}</span></div>
             </div>
-            <p className="text-sm text-on-surface-variant leading-relaxed">Valider ce devis le marque comme finalisé. Vous pourrez toujours le télécharger en PDF.</p>
+            <p className="text-sm text-on-surface-variant leading-relaxed">{t.quote.confirmDesc}</p>
             <div className="flex gap-3">
-              <button onClick={() => setShowApprove(false)} className="flex-1 py-3 rounded-xl border border-outline-variant/20 text-on-surface-variant font-bold hover:bg-surface-container-high transition-all">Annuler</button>
-              <button onClick={handleApprove} className="flex-1 py-3 rounded-xl bg-primary-container text-on-primary-container font-bold hover:shadow-[0_0_20px_rgba(212,255,58,0.4)] transition-all">Confirmer</button>
+              <button onClick={() => setShowApprove(false)} className="flex-1 py-3 rounded-xl border border-outline-variant/20 text-on-surface-variant font-bold hover:bg-surface-container-high transition-all">{t.common.cancel}</button>
+              <button onClick={handleApprove} className="flex-1 py-3 rounded-xl bg-primary-container text-on-primary-container font-bold hover:shadow-[0_0_20px_rgba(212,255,58,0.4)] transition-all">{t.common.confirm}</button>
             </div>
           </div>
         </Modal>
       )}
 
+      {showConnectModal && (
+        <SupplierConnectModal
+          initialSupplierId={selectedSupplierId !== 'auto' ? selectedSupplierId : undefined}
+          onClose={() => setShowConnectModal(false)}
+        />
+      )}
+
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </AppLayout>
+  )
+}
+
+/** Per-line confidence badge. Colour reflects how the price was obtained. */
+function MatchBadge({ method, score }: { method: MatchMethod; score: number }) {
+  const tier  = methodTier(method)
+  const label = methodLabel(method)
+  const cls   =
+    tier === 'high'   ? 'bg-primary/10 text-primary' :
+    tier === 'medium' ? 'bg-amber-400/10 text-amber-400' :
+                        'bg-white/5 text-on-surface-variant'
+  const icon =
+    tier === 'high'   ? 'verified' :
+    tier === 'medium' ? 'bolt' :
+                        'help'
+  return (
+    <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest ${cls}`} title={`${label} · score ${Math.round(score * 100)}%`}>
+      <span className="material-symbols-outlined text-[11px]">{icon}</span>
+      {label}
+    </span>
   )
 }
