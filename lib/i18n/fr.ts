@@ -39,9 +39,10 @@ export const fr: Translations = {
   footer: {
     tagline: 'POUR LES CHANTIERS.',
     copyright: '© 2026 Plombier Chiffrage.',
-    docs: 'Docs',
-    status: 'État du système',
-    security: 'Sécurité',
+    home: 'Accueil',
+    dashboard: 'Tableau de bord',
+    projects: 'Projets',
+    catalog: 'Catalogue',
     certified: 'Standard fiable',
   },
   auth: {

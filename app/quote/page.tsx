@@ -168,9 +168,7 @@ const MAT_META: Omit<Row, 'unitNum'>[] = [
   },
 ]
 
-const FIXED_MOED_OEUVRE = 8_400
-const FIXED_CHANTIER    = 1_200
-const TVA_RATE          = 0.20
+const TVA_RATE = 0.20
 
 function fmtEur(n: number) {
   return n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -252,6 +250,7 @@ export default function QuotePage() {
   const [extracted, setExtracted]     = useState<ExtractedQuote | null>(null)
   const [toc, setToc]                 = useState<ExtractedToc | null>(null)
   const [validation, setValidation]   = useState<QuoteValidation | null>(null)
+  const [devisNumber, setDevisNumber] = useState<string | null>(null)
   const [catalogEntries, setCatalogEntries] = useState<CatalogEntry[]>([])
   const [rows, setRows]               = useState<Row[]>(buildRows(SUPPLIERS[0].prices))
   const [draft, setDraft]             = useState<Row[]>(buildRows(SUPPLIERS[0].prices))
@@ -263,6 +262,7 @@ export default function QuotePage() {
     if (stored && stored.quote.items.length > 0) setExtracted(stored.quote)
     if (stored?.toc) setToc(stored.toc)
     if (stored?.validation) setValidation(stored.validation)
+    if (stored?.devisNumber) setDevisNumber(stored.devisNumber)
     setSelectedSupplierId(supplier.id)
   }, [])
 
@@ -301,11 +301,20 @@ export default function QuotePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extracted, selectedSupplierId, catalogEntries, supplierAccounts])
 
+  // Totals are now computed strictly from extracted rows — no hidden
+  // fallbacks. A CCTP with no MOE lines produces laborHT=0, which prompts
+  // the plomber to add the missing labour by hand (rows are editable).
   const calcTotals = (r: Row[]) => {
-    const materialsHT = r.reduce((s, row) => s + row.qtyNum * row.unitNum, 0)
-    const subtotalHT  = materialsHT + FIXED_MOED_OEUVRE + FIXED_CHANTIER
+    const isLabor    = (row: Row) => row.category === "MAIN D'ŒUVRE"
+    const isChantier = (row: Row) => row.category === 'RACCORDEMENTS'
+    const lineTotal  = (row: Row) => row.qtyNum * row.unitNum
+
+    const laborHT     = r.filter(isLabor).reduce((s, row) => s + lineTotal(row), 0)
+    const chantierHT  = r.filter(isChantier).reduce((s, row) => s + lineTotal(row), 0)
+    const materialsHT = r.filter(row => !isLabor(row) && !isChantier(row)).reduce((s, row) => s + lineTotal(row), 0)
+    const subtotalHT  = materialsHT + laborHT + chantierHT
     const tva         = subtotalHT * TVA_RATE
-    return { materialsHT, subtotalHT, tva, totalTTC: subtotalHT + tva }
+    return { materialsHT, laborHT, chantierHT, subtotalHT, tva, totalTTC: subtotalHT + tva }
   }
 
   const totals       = useMemo(() => calcTotals(rows),  [rows])
@@ -346,6 +355,7 @@ export default function QuotePage() {
       try {
         const currentSupplier = SUPPLIERS.find(s => s.id === selectedSupplierId) || SUPPLIERS[0]
         generateQuotePdf({
+          devisNumber: devisNumber ?? undefined,
           rows: rows.map(r => ({
             category: r.category,
             name: r.name,
@@ -366,8 +376,8 @@ export default function QuotePage() {
           },
           totals: {
             materialsHT:  totals.materialsHT,
-            laborHT:      FIXED_MOED_OEUVRE,
-            chantierHT:   FIXED_CHANTIER,
+            laborHT:      totals.laborHT,
+            chantierHT:   totals.chantierHT,
             subtotalHT:   totals.subtotalHT,
             vatRate:      TVA_RATE,
             tva:          totals.tva,
@@ -662,7 +672,7 @@ export default function QuotePage() {
                   ))}
                   <div className="pt-4 border-t border-white/5 flex justify-between items-center">
                     <span className="text-xs uppercase tracking-widest text-outline">Total MO</span>
-                    <span className="text-lg font-mono font-bold text-secondary">{fmtEur(FIXED_MOED_OEUVRE)}</span>
+                    <span className="text-lg font-mono font-bold text-secondary">{fmtEur(activeTotals.laborHT)}</span>
                   </div>
                 </div>
               </Animate>
@@ -691,7 +701,7 @@ export default function QuotePage() {
                   ))}
                   <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center">
                     <span className="text-xs uppercase tracking-widest text-outline">Total chantier</span>
-                    <span className="text-lg font-mono font-bold text-tertiary">{fmtEur(FIXED_CHANTIER)}</span>
+                    <span className="text-lg font-mono font-bold text-tertiary">{fmtEur(activeTotals.chantierHT)}</span>
                   </div>
                 </div>
               </Animate>
@@ -748,8 +758,8 @@ export default function QuotePage() {
                 )}
                 <div className="mt-5 space-y-2">
                   <div className="flex justify-between text-xs text-outline"><span>Matériaux HT</span><span className={`font-mono ${isEditing ? 'text-amber-400/80' : ''}`}>{fmtEur(activeTotals.materialsHT)}</span></div>
-                  <div className="flex justify-between text-xs text-outline"><span>Main d'œuvre</span><span className="font-mono">{fmtEur(FIXED_MOED_OEUVRE)}</span></div>
-                  <div className="flex justify-between text-xs text-outline"><span>Chantier & essais</span><span className="font-mono">{fmtEur(FIXED_CHANTIER)}</span></div>
+                  <div className="flex justify-between text-xs text-outline"><span>Main d'œuvre</span><span className={`font-mono ${isEditing ? 'text-amber-400/80' : ''}`}>{fmtEur(activeTotals.laborHT)}</span></div>
+                  <div className="flex justify-between text-xs text-outline"><span>Chantier & essais</span><span className={`font-mono ${isEditing ? 'text-amber-400/80' : ''}`}>{fmtEur(activeTotals.chantierHT)}</span></div>
                   <div className="border-t border-white/5 pt-2 flex justify-between text-xs text-outline"><span>Total HT</span><span className={`font-mono font-bold ${isEditing ? 'text-amber-400/80' : 'text-on-surface'}`}>{fmtEur(activeTotals.subtotalHT)}</span></div>
                   <div className="flex justify-between text-xs text-outline"><span>TVA (20%)</span><span className={`font-mono ${isEditing ? 'text-amber-400/80' : ''}`}>{fmtEur(activeTotals.tva)}</span></div>
                   <div className="border-t border-white/5 pt-2 flex justify-between text-xs"><span className="font-bold text-on-surface">TOTAL TTC</span><span className={`font-mono font-black text-base ${isEditing ? 'text-amber-400' : 'text-primary'}`}>{fmtEur(activeTotals.totalTTC)}</span></div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useLanguage } from '@/contexts/LanguageContext'
 import Animate from '@/components/Animate'
+import Footer from '@/components/Footer'
 import { initTrial } from '@/lib/subscription'
 import { formatSiret, isValidSiret, isValidVatFr } from '@/lib/siret'
 import { createSubscriberOrg } from '@/lib/orgs'
@@ -66,6 +67,7 @@ export default function AuthPage() {
   }
 
   return (
+    <>
     <main className="min-h-screen relative overflow-hidden bg-surface-container-lowest text-on-surface flex items-center justify-center">
       {/* Ambient Glows */}
       <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-primary-container/20 blur-[150px] rounded-full pointer-events-none translate-y-[-50%] translate-x-[-20%] animate-pulse" />
@@ -389,5 +391,7 @@ export default function AuthPage() {
         </section>
       </div>
     </main>
+    <Footer />
+    </>
   )
 }

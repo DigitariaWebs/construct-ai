@@ -44,6 +44,10 @@ export type PdfQuoteOptions = {
     siret: string
     tvaIntra: string
     insurance: string
+    /** Mandatory for construction work (loi Spinetta). */
+    decennale: string
+    /** Mandatory B2C mention — consumer-mediation body. */
+    mediator: string
   }
 }
 
@@ -54,7 +58,9 @@ const DEFAULT_COMPANY = {
   email:     'contact@plomberie-bertrand.fr',
   siret:     'SIRET 812 345 678 00019',
   tvaIntra:  'TVA FR42 812345678',
-  insurance: 'Assurance RC Pro — MAAF n° 2041-0012',
+  insurance: 'RC Pro — MAAF n° 2041-0012',
+  decennale: 'Assurance décennale — MAAF n° 2041-0012-D · France métropolitaine',
+  mediator:  'Médiateur : CNPM Médiation — cnpm-mediation-consommation.eu',
 }
 
 // ─── Print-friendly palette (no dark backgrounds, saves ink) ──────────────────
@@ -165,7 +171,14 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
   doc.setFontSize(8.5)
   setText(doc, C.text)
   let ly = y + 13
-  for (const line of [company.address, company.phone + '  ·  ' + company.email, company.siret, company.tvaIntra, company.insurance]) {
+  for (const line of [
+    company.address,
+    company.phone + '  ·  ' + company.email,
+    company.siret,
+    company.tvaIntra,
+    company.insurance,
+    company.decennale,
+  ]) {
     doc.text(line, colL, ly, { maxWidth: colW })
     ly += 11
   }
@@ -208,31 +221,38 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
   doc.line(margin, y, W - margin, y)
   y += 16
 
-  // ── Items table ─────────────────────────────────────────────────────────────
+  // ── Items table — 7-column layout required for a devis conforme ───────────
+  // Qté | Désignation | Unité | P.U. HT | TVA | Montant HT | Montant TTC.
+  // The CCTP reference is tucked under the designation in small grey text
+  // (traceability preserved, one less column).
   const cols = {
-    ref:   margin + 6,
-    desig: margin + 56,
-    qty:   margin + inner - 200,
-    unit:  margin + inner - 160,
-    pu:    margin + inner - 90,
-    total: margin + inner - 6,
+    qty:        margin + 44,                       // right-aligned
+    desig:      margin + 50,                       // left-aligned (6pt gap from qty edge)
+    desigEndX:  margin + Math.round(inner * 0.42), // wrap boundary
+    unit:       margin + Math.round(inner * 0.45),
+    pu:         margin + Math.round(inner * 0.59),
+    tva:        margin + Math.round(inner * 0.66),
+    totalHT:    margin + Math.round(inner * 0.82),
+    totalTTC:   margin + inner - 4,
   }
   const HEAD_H = 18
   const ROW_MIN_H = 22
   const BOTTOM_SAFE = 180 // reserve space for totals + signature on last page
+  const vatPct = totals.vatRate * 100
 
   function drawTableHeader() {
     setFill(doc, C.ink)
     doc.rect(margin, y, inner, HEAD_H, 'F')
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7.5)
+    doc.setFontSize(7)
     setText(doc, C.white)
-    doc.text('RÉF.',          cols.ref,   y + 12)
-    doc.text('DÉSIGNATION',   cols.desig, y + 12)
-    doc.text('QTÉ',           cols.qty,   y + 12, { align: 'right' })
-    doc.text('UNITÉ',         cols.unit,  y + 12)
-    doc.text('P.U. HT',       cols.pu,    y + 12, { align: 'right' })
-    doc.text('TOTAL HT',      cols.total, y + 12, { align: 'right' })
+    doc.text('QTÉ',          cols.qty,      y + 12, { align: 'right' })
+    doc.text('DÉSIGNATION',  cols.desig,    y + 12)
+    doc.text('UNITÉ',        cols.unit,     y + 12)
+    doc.text('P.U. HT',      cols.pu,       y + 12, { align: 'right' })
+    doc.text('TVA',          cols.tva,      y + 12, { align: 'right' })
+    doc.text('MONTANT HT',   cols.totalHT,  y + 12, { align: 'right' })
+    doc.text('MONTANT TTC',  cols.totalTTC, y + 12, { align: 'right' })
     y += HEAD_H
   }
 
@@ -282,19 +302,31 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
     doc.setFontSize(8.5)
     setText(doc, C.accent)
     doc.text(cat.toUpperCase(), margin + 6, y + 11)
-    const catTotal = catRows.reduce((s, r) => s + r.qtyNum * r.unitNum, 0)
+    const catTotalHT  = catRows.reduce((s, r) => s + r.qtyNum * r.unitNum, 0)
+    const catTotalTTC = catTotalHT * (1 + totals.vatRate)
     setText(doc, C.text)
     doc.setFont('helvetica', 'normal')
-    doc.text(`sous-total : ${fmtEur(catTotal)}`, W - margin - 6, y + 11, { align: 'right' })
+    doc.text(
+      `sous-total HT ${fmtEur(catTotalHT)}  ·  TTC ${fmtEur(catTotalTTC)}`,
+      W - margin - 6, y + 11,
+      { align: 'right' },
+    )
     y += 16
     zebra = false
 
     for (const r of catRows) {
-      const rowTotal = r.qtyNum * r.unitNum
-      // Wrap designation into up to 2 lines within available width
-      const desigMaxW = cols.qty - cols.desig - 10
+      const rowTotalHT  = r.qtyNum * r.unitNum
+      const rowTotalTTC = rowTotalHT * (1 + totals.vatRate)
+
+      // Wrap designation into up to 2 lines within available width.
+      // Sub-line stacks the CCTP reference + optional description.
+      const desigMaxW = cols.desigEndX - cols.desig - 4
       const desigWrapped = doc.splitTextToSize(r.name, desigMaxW).slice(0, 2) as string[]
-      const subWrapped   = r.sub ? doc.splitTextToSize(r.sub, desigMaxW).slice(0, 1) as string[] : []
+      const subParts: string[] = []
+      if (r.reference) subParts.push(`Réf. ${r.reference}`)
+      if (r.sub)       subParts.push(r.sub)
+      const subText    = subParts.join('  ·  ')
+      const subWrapped = subText ? doc.splitTextToSize(subText, desigMaxW).slice(0, 1) as string[] : []
       const rowH = Math.max(ROW_MIN_H, 14 + desigWrapped.length * 10 + subWrapped.length * 9 + 4)
 
       if (y + rowH > H - BOTTOM_SAFE) newPage()
@@ -305,13 +337,13 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
       }
       zebra = !zebra
 
-      // Ref
+      // Qté
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(8)
-      setText(doc, C.muted)
-      doc.text(r.reference ?? '—', cols.ref, y + 13)
+      setText(doc, C.text)
+      doc.text(fmtQty(r.qtyNum), cols.qty, y + 13, { align: 'right' })
 
-      // Designation
+      // Designation (+ reference / sub-line below)
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(8.5)
       setText(doc, C.ink)
@@ -319,24 +351,23 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
 
       if (subWrapped.length > 0) {
         doc.setFont('helvetica', 'normal')
-        doc.setFontSize(7.5)
+        doc.setFontSize(7)
         setText(doc, C.muted)
         doc.text(subWrapped, cols.desig, y + 13 + desigWrapped.length * 10 + 1)
       }
 
-      // Qty + unit + PU
+      // Unité · PU HT · TVA · Montant HT · Montant TTC
       doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8.5)
+      doc.setFontSize(8)
       setText(doc, C.text)
-      doc.text(fmtQty(r.qtyNum), cols.qty, y + 13, { align: 'right' })
-      doc.text(r.qtyUnit, cols.unit, y + 13)
-      doc.text(fmtEur(r.unitNum), cols.pu, y + 13, { align: 'right' })
+      doc.text(r.qtyUnit,                     cols.unit,     y + 13)
+      doc.text(fmtEur(r.unitNum),             cols.pu,       y + 13, { align: 'right' })
+      doc.text(`${vatPct.toFixed(0)}%`,       cols.tva,      y + 13, { align: 'right' })
 
-      // Total
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8.5)
       setText(doc, C.ink)
-      doc.text(fmtEur(rowTotal), cols.total, y + 13, { align: 'right' })
+      doc.text(fmtEur(rowTotalHT),  cols.totalHT,  y + 13, { align: 'right' })
+      doc.text(fmtEur(rowTotalTTC), cols.totalTTC, y + 13, { align: 'right' })
 
       // Hairline between rows
       setDraw(doc, C.rule)
@@ -402,15 +433,25 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
   y += 40
 
   // ── Conditions + signatures ─────────────────────────────────────────────────
-  if (y + 140 > H - 40) newPage()
+  // Reserve enough room for the conditions box (128) + gap (10) + signature
+  // block (70) + safety so they never split across pages.
+  if (y + 220 > H - 40) newPage()
 
+  // Taux horaire MOE — computed from labour rows so the conditions block
+  // can state it plainly (standard on a conforme devis).
+  const moeRows = rows.filter(r => r.category === "MAIN D'ŒUVRE" && r.qtyUnit === 'h')
+  const moeHours = moeRows.reduce((s, r) => s + r.qtyNum, 0)
+  const moeCost  = moeRows.reduce((s, r) => s + r.qtyNum * r.unitNum, 0)
+  const moeRate  = moeHours > 0 ? moeCost / moeHours : 0
+
+  const condBoxH = 128
   setFill(doc, C.zebra)
-  doc.rect(margin, y, inner, 76, 'F')
+  doc.rect(margin, y, inner, condBoxH, 'F')
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8.5)
   setText(doc, C.ink)
-  doc.text('CONDITIONS DE PAIEMENT', margin + 10, y + 14)
+  doc.text('CONDITIONS & MENTIONS LÉGALES', margin + 10, y + 14)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
@@ -418,15 +459,21 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
   const cond = [
     '• Acompte 30 % à la signature du devis, solde à la livraison.',
     '• Règlement par virement bancaire sous 30 jours après facturation.',
-    '• TVA sur les encaissements. Pénalités de retard : 3 × taux légal. Indemnité forfaitaire : 40 €.',
-    '• Devis valable 30 jours à compter de la date d\'émission.',
+    '• Pénalités de retard : taux BCE + 10 points. Indemnité forfaitaire de recouvrement : 40 €.',
+    '• Pas d\u2019escompte pour paiement anticipé.',
+    '• Devis valable 30 jours à compter de la date d\u2019émission.',
+    '• Délai d\u2019exécution : à préciser après signature — usuellement 4 à 8 semaines selon approvisionnement.',
+    moeRate > 0
+      ? `• Taux horaire main d\u2019œuvre : ${fmtEur(moeRate)} HT  ·  ${moeHours.toLocaleString('fr-FR')} h au total.`
+      : '• Main d\u2019œuvre facturée à l\u2019heure, détail par tâche dans le tableau ci-dessus.',
+    `• ${company.mediator}`,
   ]
   let cy = y + 28
   for (const line of cond) {
     doc.text(line, margin + 10, cy, { maxWidth: inner - 20 })
     cy += 11
   }
-  y += 88
+  y += condBoxH + 10
 
   // Signature blocks
   const sigW = (inner - 20) / 2

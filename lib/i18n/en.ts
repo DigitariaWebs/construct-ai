@@ -37,9 +37,10 @@ export const en = {
   footer: {
     tagline: 'BUILT FOR BUILDERS.',
     copyright: '© 2026 Plombier Chiffrage.',
-    docs: 'Docs',
-    status: 'System Status',
-    security: 'Security',
+    home: 'Home',
+    dashboard: 'Dashboard',
+    projects: 'Projects',
+    catalog: 'Catalog',
     certified: 'Trusted Standard',
   },
   auth: {

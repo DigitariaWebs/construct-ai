@@ -14,6 +14,19 @@ const RESULT_KEY     = 'df_quote_result'
 const FILE_KEY       = 'df_quote_file_name'
 const TOC_KEY        = 'df_quote_toc'
 const VALIDATION_KEY = 'df_quote_validation'
+const DEVIS_KEY      = 'df_quote_devis_number'
+
+// Human-friendly devis number, generated once per extraction so every PDF
+// re-export of the same quote carries the same reference (legal requirement
+// for a French devis — the number must be stable once issued).
+function makeDevisNumber(): string {
+  const d = new Date()
+  const yy = String(d.getFullYear()).slice(-2)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const rand = Math.floor(1000 + Math.random() * 9000)
+  return `DV-${yy}${mm}${dd}-${rand}`
+}
 
 export type ExtractionStage =
   | 'reading'     // uploading file / starting request
@@ -26,7 +39,7 @@ export type ExtractionStage =
 export type ExtractionState =
   | { status: 'idle' }
   | { status: 'running'; fileName: string; stage: ExtractionStage; progress: number }
-  | { status: 'done';    fileName: string; quote: ExtractedQuote; toc: ExtractedToc | null; validation: QuoteValidation | null }
+  | { status: 'done';    fileName: string; quote: ExtractedQuote; toc: ExtractedToc | null; validation: QuoteValidation | null; devisNumber: string }
   | { status: 'error';   fileName: string; message: string }
 
 type Listener = (s: ExtractionState) => void
@@ -58,6 +71,7 @@ export async function startExtraction(file: File) {
     sessionStorage.removeItem(FILE_KEY)
     sessionStorage.removeItem(TOC_KEY)
     sessionStorage.removeItem(VALIDATION_KEY)
+    sessionStorage.removeItem(DEVIS_KEY)
   } catch {}
   set({ status: 'running', fileName: file.name, stage: 'reading', progress: STAGE_PROGRESS.reading })
 
@@ -98,10 +112,14 @@ export async function startExtraction(file: File) {
     const data = await res.json() as { quote: ExtractedQuote; fileName: string; toc: ExtractedToc | null; validation: QuoteValidation | null }
     set({ status: 'running', fileName: data.fileName, stage: 'pricing', progress: STAGE_PROGRESS.pricing })
 
+    // Mint a stable devis number for this result — reused on every re-export.
+    const devisNumber = makeDevisNumber()
+
     // Persist to sessionStorage so /quote survives a hard refresh.
     try {
       sessionStorage.setItem(RESULT_KEY, JSON.stringify(data.quote))
       sessionStorage.setItem(FILE_KEY, data.fileName)
+      sessionStorage.setItem(DEVIS_KEY, devisNumber)
       if (data.toc) sessionStorage.setItem(TOC_KEY, JSON.stringify(data.toc))
       else sessionStorage.removeItem(TOC_KEY)
       if (data.validation) sessionStorage.setItem(VALIDATION_KEY, JSON.stringify(data.validation))
@@ -109,14 +127,14 @@ export async function startExtraction(file: File) {
     } catch {}
 
     recordQuoteUsed()
-    set({ status: 'done', fileName: data.fileName, quote: data.quote, toc: data.toc ?? null, validation: data.validation ?? null })
+    set({ status: 'done', fileName: data.fileName, quote: data.quote, toc: data.toc ?? null, validation: data.validation ?? null, devisNumber })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown extraction error.'
     set({ status: 'error', fileName: file.name, message })
   }
 }
 
-export function loadStoredQuote(): { quote: ExtractedQuote; fileName: string; toc: ExtractedToc | null; validation: QuoteValidation | null } | null {
+export function loadStoredQuote(): { quote: ExtractedQuote; fileName: string; toc: ExtractedToc | null; validation: QuoteValidation | null; devisNumber: string } | null {
   try {
     const raw = sessionStorage.getItem(RESULT_KEY)
     if (!raw) return null
@@ -126,7 +144,14 @@ export function loadStoredQuote(): { quote: ExtractedQuote; fileName: string; to
     const toc = tocRaw ? JSON.parse(tocRaw) as ExtractedToc : null
     const validationRaw = sessionStorage.getItem(VALIDATION_KEY)
     const validation = validationRaw ? JSON.parse(validationRaw) as QuoteValidation : null
-    return { quote, fileName, toc, validation }
+    // Back-fill a devis number for pre-existing quotes that don't have one,
+    // then persist it so the next export gets the same value.
+    let devisNumber = sessionStorage.getItem(DEVIS_KEY)
+    if (!devisNumber) {
+      devisNumber = makeDevisNumber()
+      try { sessionStorage.setItem(DEVIS_KEY, devisNumber) } catch {}
+    }
+    return { quote, fileName, toc, validation, devisNumber }
   } catch {
     return null
   }
@@ -138,6 +163,7 @@ export function clearStoredQuote() {
     sessionStorage.removeItem(FILE_KEY)
     sessionStorage.removeItem(TOC_KEY)
     sessionStorage.removeItem(VALIDATION_KEY)
+    sessionStorage.removeItem(DEVIS_KEY)
   } catch {}
   set({ status: 'idle' })
 }

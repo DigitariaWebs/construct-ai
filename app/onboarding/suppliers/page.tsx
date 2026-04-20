@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Animate from '@/components/Animate'
+import Footer from '@/components/Footer'
 import SupplierConnectModal from '@/components/SupplierConnectModal'
 import { SUPPLIERS } from '@/lib/suppliers'
 import { getAllAccounts, subscribeAccounts, type SupplierAccount } from '@/lib/supplierAccounts'
@@ -37,6 +38,7 @@ export default function SupplierOnboardingPage() {
   }, [accounts])
 
   return (
+    <>
     <main className="min-h-screen relative overflow-hidden bg-surface-container-lowest text-on-surface">
       {/* Ambient glows */}
       <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-container/15 blur-[160px] rounded-full pointer-events-none animate-pulse" />
@@ -193,5 +195,7 @@ export default function SupplierOnboardingPage() {
         />
       )}
     </main>
+    <Footer />
+    </>
   )
 }

@@ -57,6 +57,44 @@ const HARD_MAX_BY_UNIT: Record<Unit, number> = {
   pce: 1000,
 }
 
+// Vague / catch-all patterns that break a devis conforme: a construction
+// engineer cannot audit "Fournitures diverses" or "Petits matériels" line
+// by line, so these are removed outright (Stage 1). Match on the
+// normalized name so accents and punctuation don't sneak them through.
+const VAGUE_NAME_PATTERNS: RegExp[] = [
+  /\bfourniture[s]?\s+divers/,
+  /\bfourniture[s]?\s+plomberie\b/,
+  /\bmateriel[s]?\s+divers/,
+  /\bpetit[s]?\s+materiel/,
+  /\bpetite\s+quincaillerie/,
+  /\baccessoire[s]?\s+divers/,
+  /\bconsommable[s]?\b/,
+  /\bdivers\s+plomberie\b/,
+  /\bdivers\s+sanitaire[s]?\b/,
+  /^divers$/,
+  /^fournitures?$/,
+]
+
+// MAIN D'ŒUVRE lines whose name is essentially "Main d'œuvre" with no
+// task breakdown. A conforme devis requires per-task labour lines.
+const LUMP_SUM_LABOR_PATTERNS: RegExp[] = [
+  /^main\s*d.?\s*oeuvre$/,
+  /^pose\s+plomberie$/,
+  /^pose\s+sanitaire[s]?$/,
+  /^installation\s+complete$/,
+  /^installation\s+plomberie$/,
+]
+
+// Categories whose designations must contain a dimension marker (Ø, DN,
+// mm, or a "NNxNN" size). Extraction prompt already asks for it — this
+// catches the lines where the model slipped.
+const DIM_REQUIRED_CATEGORIES = new Set<string>([
+  'ALIMENTATION EF/EC',
+  'ÉVACUATION EU/EV',
+  'CALORIFUGEAGE',
+])
+const DIM_MARKER_RE = /(ø|Ø|\bdn\s*\d|\b\d{1,3}\s*mm\b|\b\d{1,3}\s*\/\s*\d{1,3}\b|\b\d{1,3}\s*x\s*\d{1,3}\b)/i
+
 // ---------- Helpers ----------
 
 function truncate(s: string, n = 60): string {
@@ -143,6 +181,26 @@ export function validateQuote(quote: ExtractedQuote): {
       })
       item.uncertain = true
     }
+    // Missing-specs: tubes/raccords/calorifuge must carry a dimension marker.
+    if (DIM_REQUIRED_CATEGORIES.has(item.category) && !DIM_MARKER_RE.test(item.name)) {
+      warnings.push({
+        item: truncate(summarize(item)),
+        reason: `Désignation sans diamètre ni dimension (Ø / DN / mm) — devis non conforme sur ${item.category}.`,
+      })
+      item.uncertain = true
+    }
+  }
+
+  // Stage 3b — single-line MOE sanity check. If there's exactly one
+  // MAIN D'ŒUVRE line surviving, flag it: a conforme devis needs the
+  // labour broken down by task.
+  const moeLines = survivors.filter(i => i.category === "MAIN D'ŒUVRE")
+  if (moeLines.length === 1) {
+    warnings.push({
+      item: truncate(summarize(moeLines[0])),
+      reason: 'Une seule ligne de main d\u2019œuvre — devis non conforme, à ventiler par tâche (pose chaudière, pose radiateurs, raccordements…).',
+    })
+    moeLines[0].uncertain = true
   }
 
   // Stage 4 — merge exact duplicates (same category + unit + normalized name).
@@ -200,6 +258,28 @@ function findHardFailure(item: ExtractedItem): string | null {
   if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
     return `Quantité invalide (${item.quantity}) — ligne ignorée.`
   }
+
+  const normalized = normalizeName(item.name)
+
+  // Vague catch-all names break devis conformance (non-auditable).
+  for (const pat of VAGUE_NAME_PATTERNS) {
+    if (pat.test(normalized)) {
+      return 'Ligne vague non-conforme (« fournitures diverses », « petits matériels », …) — à détailler en postes concrets.'
+    }
+  }
+
+  // Lump-sum labour: a single global MOE line, or labour billed in ens/lot.
+  if (item.category === "MAIN D'ŒUVRE") {
+    if (item.unit === 'ens') {
+      return 'Main d\u2019œuvre en forfait (unit « ens ») — devis non conforme, détailler en heures par tâche.'
+    }
+    for (const pat of LUMP_SUM_LABOR_PATTERNS) {
+      if (pat.test(normalized)) {
+        return 'Ligne « main d\u2019œuvre » globale sans détail de tâche — devis non conforme.'
+      }
+    }
+  }
+
   return null
 }
 

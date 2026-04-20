@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
-import Footer from '@/components/Footer'
 import UploadModal from '@/components/UploadModal'
 import PaywallModal from '@/components/PaywallModal'
 import Toast from '@/components/Toast'
@@ -691,8 +690,6 @@ export default function DashboardPage() {
           </button>
         </Animate>
       </div>
-
-      <Footer />
 
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} reason="upgrade" />}

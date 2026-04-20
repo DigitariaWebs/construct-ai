@@ -1,9 +1,17 @@
-﻿'use client'
+'use client'
 
+import Link from 'next/link'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function Footer() {
   const { t } = useLanguage()
+
+  const links = [
+    { href: '/',          label: t.footer.home },
+    { href: '/dashboard', label: t.footer.dashboard },
+    { href: '/projects',  label: t.footer.projects },
+    { href: '/catalog',   label: t.footer.catalog },
+  ]
 
   return (
     <footer className="w-full bg-black py-12 px-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8">
@@ -16,26 +24,24 @@ export default function Footer() {
         </p>
       </div>
 
-      <div className="flex gap-8">
+      <nav className="flex flex-wrap justify-center items-center gap-x-8 gap-y-2">
+        {links.map(({ href, label }) => (
+          <Link
+            key={href}
+            href={href}
+            className="font-body text-xs tracking-normal text-on-surface-variant hover:text-primary transition-colors"
+          >
+            {label}
+          </Link>
+        ))}
         <a
-          href="#"
-          className="font-body text-xs tracking-normal text-on-surface-variant hover:text-primary transition-colors"
+          href="mailto:alambre.contact@gmail.com"
+          className="font-body text-xs tracking-normal text-on-surface-variant hover:text-primary transition-colors inline-flex items-center gap-1.5"
         >
-          {t.footer.docs}
+          <span className="material-symbols-outlined text-[14px]">mail</span>
+          alambre.contact@gmail.com
         </a>
-        <a
-          href="#"
-          className="font-body text-xs tracking-normal text-on-surface-variant hover:text-primary transition-colors"
-        >
-          {t.footer.status}
-        </a>
-        <a
-          href="#"
-          className="font-body text-xs tracking-normal text-on-surface-variant hover:text-primary transition-colors"
-        >
-          {t.footer.security}
-        </a>
-      </div>
+      </nav>
 
       <div className="flex items-center gap-4 text-primary">
         <span className="material-symbols-outlined">verified</span>
@@ -46,4 +52,3 @@ export default function Footer() {
     </footer>
   )
 }
-

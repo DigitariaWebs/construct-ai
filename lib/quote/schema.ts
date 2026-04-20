@@ -217,6 +217,38 @@ EXTRACTION RULES
 
 10. Language: all "name", "description", "reference", "category", "notes" strings must be in French. "unit" uses the enum values above exactly (ml, m2, …).
 
+11. Vague / catch-all lines are FORBIDDEN. A devis conforme must be auditable line-by-line by a construction engineer. Never emit any of:
+    - "Fournitures diverses", "Fournitures plomberie", "Matériel divers", "Consommables"
+    - "Petits matériels", "Petite quincaillerie", "Accessoires divers"
+    - "Divers plomberie", "Divers sanitaire", any line whose name is just "Divers"
+    If the CCTP mentions one of these generically, break it into concrete items (colliers, manchons, supports, etc.) with their own quantities, OR omit it and add a "Non chiffré" note. Never pass vagueness through.
+
+12. Main d'œuvre must be BROKEN DOWN, never a single global line. A devis conforme requires traceable labour per task. Emit one MAIN D'ŒUVRE line per installation task, with unit="h" and quantity in hours:
+    - GOOD:
+      - { category: "MAIN D'ŒUVRE", name: "Pose chaudière murale gaz", quantity: 6, unit: "h", ... }
+      - { category: "MAIN D'ŒUVRE", name: "Pose radiateurs acier (12 u.)", quantity: 18, unit: "h", ... }
+      - { category: "MAIN D'ŒUVRE", name: "Raccordements EF/EC réseau cuivre", quantity: 12, unit: "h", ... }
+    - BAD (forbidden):
+      - { category: "MAIN D'ŒUVRE", name: "Main d'œuvre", quantity: 50, unit: "h" }            ← single global line
+      - { category: "MAIN D'ŒUVRE", name: "Pose plomberie", quantity: 1, unit: "ens" }          ← lump-sum, no hours
+      - { category: "MAIN D'ŒUVRE", name: "Installation complète", quantity: 1, unit: "lot" }   ← lump-sum
+    Labour unit MUST be "h". Never "ens", "lot", or "u" for a labour line.
+
+13. Designation specs are mandatory for tubes, fittings, raccords, and calorifugeage. Every such line name MUST contain at least one dimension marker: Ø, DN, mm, x (e.g. "16x1.5"), or a concrete size. "Tube cuivre" alone is invalid; "Tube cuivre Ø16/18 NF EN 1057" is valid. For fixtures (radiateurs, chaudières, sanitaires, VMC), include brand/model where the CCTP specifies one.
+
+14. Quantities MUST scale with the project size. A CCTP is often written per-logement/per-apartment/per-salle-de-bains, then repeated for the whole building. You must multiply.
+    - BEFORE emitting a fixture quantity, scan the CCTP for the project scale: "N logements", "N appartements", "immeuble de N étages", "N salles de bains", "N T3 + M T4", etc. Record it in a "Projet de X logements" note.
+    - If the CCTP says "chaque logement comprend 1 WC, 1 lavabo, 1 douche" and the project has 29 logements → emit { name: "WC suspendu …", quantity: 29, unit: "u" }, not quantity: 1.
+    - If the fixture count per logement varies (e.g. T2 = 1 SDB, T4 = 2 SDB) and the CCTP gives the breakdown (e.g. "15 T2 + 14 T4"), compute the total (15×1 + 14×2 = 43) and emit quantity: 43 with uncertain=false.
+    - If the per-logement count is given but the total number of logements is NOT stated, emit your best inferred quantity with uncertain=true and a note "Quantité déduite — nombre de logements non précisé".
+    - Tubing lengths also scale: "20 ml par logement" on 29 logements → 580 ml, not 20 ml.
+    - Labour (MAIN D'ŒUVRE) scales too: "pose WC ≈ 1h par appareil" on 29 WC → 29h, not 1h.
+
+    Anti-example — do NOT emit these in a 29-logement project:
+    - { name: "WC suspendu Geberit", quantity: 1,  unit: "u"  }    ← forgot to multiply
+    - { name: "Douche italienne",    quantity: 1,  unit: "ens" }   ← forgot to multiply
+    - { name: "Main d'œuvre pose",   quantity: 1,  unit: "h"  }    ← forgot to multiply AND wrong unit use
+
 ==============================================
 EXAMPLES
 ==============================================
@@ -235,4 +267,11 @@ Note that uncertain=true because "environ" is a range marker. Each diameter stay
 
 Anti-example — do NOT produce:
 - { category: "PLOMBERIE", name: "Tube cuivre", description: "Diamètres variés", quantity: 125, unit: "ml", reference: "" }
-This merges three SKUs, loses the diameter spec, uses a category outside the whitelist, and drops the reference. All four are disqualifying errors.`
+This merges three SKUs, loses the diameter spec, uses a category outside the whitelist, and drops the reference. All four are disqualifying errors.
+
+Anti-example — devis NON-CONFORME — do NOT produce:
+- { category: "DIVERS",        name: "Fournitures diverses",  quantity: 1,  unit: "ens", reference: "" }
+- { category: "DIVERS",        name: "Petits matériels",      quantity: 1,  unit: "lot", reference: "" }
+- { category: "MAIN D'ŒUVRE",  name: "Main d'œuvre",          quantity: 50, unit: "h",   reference: "" }
+- { category: "MAIN D'ŒUVRE",  name: "Installation complète", quantity: 1,  unit: "lot", reference: "" }
+These four lines make the quote non-auditable. A construction engineer cannot verify them, a client cannot compare them, and a technical auditor will reject them. Break each into concrete, quantified tasks or omit them with a "Non chiffré" note.`
