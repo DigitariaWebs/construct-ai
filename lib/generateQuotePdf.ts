@@ -121,7 +121,7 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
   setText(doc, C.ink)
-  doc.text('PLOMBIER CHIFFRAGE', margin, y)
+  doc.text('PLOMBIA CHIFFRAGE', margin, y)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
@@ -264,7 +264,7 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7.5)
     setText(doc, C.muted)
-    doc.text(`Plombier Chiffrage  ·  plombier-chiffrage.fr`, margin, fy)
+    doc.text(`Plombia Chiffrage  ·  plombia-chiffrage.fr`, margin, fy)
     doc.text(`${devisNumber}`, W / 2, fy, { align: 'center' })
     doc.text(`Page ${pageNum} / ${pageCount}`, W - margin, fy, { align: 'right' })
   }

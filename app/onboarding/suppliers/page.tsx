@@ -52,7 +52,7 @@ export default function SupplierOnboardingPage() {
               <span className="material-symbols-outlined text-on-surface text-xl">architecture</span>
             </div>
             <span className="font-headline font-bold text-xl tracking-tight text-white">
-              Plombier Chiffrage
+              Plombia Chiffrage
             </span>
           </Link>
         </Animate>

@@ -39,11 +39,11 @@ export const DEFAULT_SUBSCRIBER_ORG_ID = 'org-morel-plomberie'
 const SEED_ORGS: Org[] = [
   {
     id: ADMIN_ORG_ID,
-    name: 'Plombier Chiffrage — Opérations',
+    name: 'Plombia Chiffrage — Opérations',
     kind: 'admin',
     billingMode: 'internal',
     contactName: 'Jean-Marc Bertrand',
-    contactEmail: 'jm@plombier-chiffrage.fr',
+    contactEmail: 'jm@plombia-chiffrage.fr',
     createdAt: Date.parse('2025-09-01'),
   },
   {

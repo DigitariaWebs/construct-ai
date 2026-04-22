@@ -17,7 +17,7 @@ export default function Footer() {
     <footer className="w-full bg-black py-12 px-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8">
       <div className="flex flex-col gap-2">
         <span className="font-headline font-bold text-on-surface tracking-tighter text-xl">
-          PLOMBIER CHIFFRAGE
+          PLOMBIA CHIFFRAGE
         </span>
         <p className="font-body text-xs tracking-normal text-on-surface-variant">
           {t.footer.copyright} {t.footer.tagline}

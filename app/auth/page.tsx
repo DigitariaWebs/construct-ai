@@ -83,7 +83,7 @@ export default function AuthPage() {
                 <span className="material-symbols-outlined text-on-surface text-2xl">architecture</span>
               </div>
               <span className="font-headline font-bold text-3xl tracking-tight text-white">
-                Plombier Chiffrage
+                Plombia Chiffrage
               </span>
             </Link>
           </Animate>

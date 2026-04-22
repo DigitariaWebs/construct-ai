@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 
-// Invoice emitted by the admin (Jean-Marc / Plombier Chiffrage Ops) to a
+// Invoice emitted by the admin (Jean-Marc / Plombia Chiffrage Ops) to a
 // service-client plumber for running a one-off quote on their behalf.
 // Mirrors the visual language of generateQuotePdf.ts — white paper, single
 // accent rule, B&W text — so both documents feel like one stationery set.
@@ -46,7 +46,7 @@ export type PdfInvoiceOptions = {
   locale?: 'fr' | 'en'
   /** Translated labels (from i18n's `invoice` namespace). */
   labels?: PdfInvoiceLabels
-  /** Issuer = the admin workspace (Plombier Chiffrage). */
+  /** Issuer = the admin workspace (Plombia Chiffrage). */
   issuer?: {
     name: string
     address: string
@@ -64,16 +64,16 @@ export type PdfInvoiceOptions = {
 }
 
 const DEFAULT_ISSUER = {
-  name:     'Plombier Chiffrage — Opérations',
+  name:     'Plombia Chiffrage — Opérations',
   address:  '12 rue des Artisans · 69003 Lyon',
   phone:    '06 12 34 56 78',
-  email:    'jm@plombier-chiffrage.fr',
+  email:    'jm@plombia-chiffrage.fr',
   siret:    'SIRET 902 184 330 00017',
   tvaIntra: 'TVA FR60 902184330',
 }
 
 const DEFAULT_LABELS_FR: PdfInvoiceLabels = {
-  brandName: 'PLOMBIER CHIFFRAGE',
+  brandName: 'PLOMBIA CHIFFRAGE',
   subtitle: 'Prestation de chiffrage CCTP · Service à la demande',
   invoiceTitle: 'FACTURE N°',
   issuedOn: 'Émise le',

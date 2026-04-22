@@ -117,7 +117,7 @@ export default function Navbar() {
       <Link href="/" className="flex items-center gap-3 group">
         <span className="material-symbols-outlined text-on-surface text-2xl">architecture</span>
         <span className="font-headline font-black text-on-surface tracking-tighter text-lg uppercase">
-          PLOMBIER CHIFFRAGE
+          PLOMBIA CHIFFRAGE
         </span>
       </Link>
 

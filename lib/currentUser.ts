@@ -39,7 +39,7 @@ export const SEED_USERS: User[] = [
   {
     id: 'u-admin',
     name: 'Jean-Marc Bertrand',
-    email: 'jm@plombier-chiffrage.fr',
+    email: 'jm@plombia-chiffrage.fr',
     initials: 'JB',
     role: 'admin',
     primaryOrgId: ADMIN_ORG_ID,

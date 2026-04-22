@@ -16,7 +16,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Plombier Chiffrage — CCTP → devis en quelques minutes',
+  title: 'Plombia Chiffrage — CCTP → devis en quelques minutes',
   description:
     'Déposez votre CCTP, recevez un devis conforme, poste par poste. Plus de nuits blanches sur les métrés.',
 }
