@@ -51,8 +51,8 @@ export type Quote = {
 
 const SEED: Quote[] = [
   // Morel Plomberie — owner's own quotes
-  { id: 'q-001', orgId: DEFAULT_SUBSCRIBER_ORG_ID, createdBy: 'u-owner',  projectName: 'Résidence Les Pins — Réhabilitation', lot: 'Lot 09 — Plomberie · Chauffage · VMC', date: '10/04/2026', supplier: 'CDO',          supplierInitials: 'CDO', status: 'finalisé',  lineItems: 24, totalHT: 28450, sector: 'Plomberie' },
-  { id: 'q-002', orgId: DEFAULT_SUBSCRIBER_ORG_ID, createdBy: 'u-owner',  projectName: 'Copropriété Bellevue — Neuf',         lot: 'Lot 09 — Plomberie · Sanitaires',      date: '05/04/2026', supplier: 'Pim Plastic',  supplierInitials: 'PP',  status: 'envoyé',    lineItems: 31, totalHT: 42180, sector: 'Plomberie' },
+  { id: 'q-001', orgId: DEFAULT_SUBSCRIBER_ORG_ID, createdBy: 'u-owner',  projectName: 'Résidence Les Pins — Réhabilitation', lot: 'Lot 09 — Plomberie · Chauffage · VMC', date: '10/04/2026', supplier: 'CEDEO',        supplierInitials: 'CED', status: 'finalisé',  lineItems: 24, totalHT: 28450, sector: 'Plomberie' },
+  { id: 'q-002', orgId: DEFAULT_SUBSCRIBER_ORG_ID, createdBy: 'u-owner',  projectName: 'Copropriété Bellevue — Neuf',         lot: 'Lot 09 — Plomberie · Sanitaires',      date: '05/04/2026', supplier: 'Pum Plastique', supplierInitials: 'PP',  status: 'envoyé',    lineItems: 31, totalHT: 42180, sector: 'Plomberie' },
   // Morel Plomberie — member's quote (should be invisible to owner? no — owner sees members too)
   { id: 'q-003', orgId: DEFAULT_SUBSCRIBER_ORG_ID, createdBy: 'u-member', projectName: 'TERRALIA Verdun — 27 logements',      lot: 'Lot 09 — Plomberie · Chauffage · VMC', date: '28/03/2026', supplier: 'IA Optimisé', supplierInitials: 'IA',  status: 'brouillon', lineItems: 47, totalHT: 89600, sector: 'CVC' },
 
@@ -60,7 +60,7 @@ const SEED: Quote[] = [
   {
     id: 'q-101', orgId: 'org-sarl-dubois', createdBy: 'u-admin',
     projectName: 'SARL Dubois — 18 logements mairie', lot: 'Lot 09 — Plomberie · Sanitaires',
-    date: '02/04/2026', supplier: 'CDO', supplierInitials: 'CDO', status: 'finalisé',
+    date: '02/04/2026', supplier: 'CEDEO', supplierInitials: 'CED', status: 'finalisé',
     lineItems: 36, totalHT: 54820, sector: 'Plomberie',
     billing: { mode: 'per_quote', amount: 650, invoicedAt: Date.parse('2026-04-03') },
   },

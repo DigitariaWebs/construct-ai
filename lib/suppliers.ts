@@ -27,9 +27,9 @@ export const SUPPLIERS: Supplier[] = [
   },
   {
     id: 'cdo',
-    name: 'CDO',
+    name: 'CEDEO',
     sub: 'Plomberie & sanitaires',
-    initials: 'CDO',
+    initials: 'CED',
     tier: 'TIER 1',
     tierColor: 'text-emerald-400 bg-emerald-400/10',
     rating: 4.8,
@@ -38,7 +38,7 @@ export const SUPPLIERS: Supplier[] = [
   },
   {
     id: 'pim',
-    name: 'Pim Plastic',
+    name: 'Pum Plastique',
     sub: 'Raccords et tubes PVC',
     initials: 'PP',
     tier: 'TIER 1',

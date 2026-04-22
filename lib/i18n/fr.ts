@@ -103,7 +103,7 @@ export const fr: Translations = {
       'L\u2019IA lit le CCTP, détecte chaque poste (plomberie, chauffage, VMC) et chiffre les quantités.',
     marketTitle: 'Prix fournisseurs',
     marketDesc:
-      'CDO, Pim, Richardson, Marplin — comparez en un clic et choisissez.',
+      'CEDEO, Pum Plastique, Richardson, Marplin — comparez en un clic et choisissez.',
     logisticsTitle: 'Devis conforme',
     logisticsDesc:
       'Chaque ligne séparée, exportable en PDF, prêt à être envoyé au maître d\u2019œuvre.',

@@ -559,7 +559,7 @@ function DiscountTab({ supplierId, supplierName, account, onDone }: {
     <div className="space-y-5">
       {!isReconfigure && (
         <>
-          <Field label="Numéro de compte client" icon="badge" value={accountNumber} onChange={setAccountNumber} placeholder="CDO-482910" disabled={busy} />
+          <Field label="Numéro de compte client" icon="badge" value={accountNumber} onChange={setAccountNumber} placeholder="CEDEO-482910" disabled={busy} />
           <Field label="Email du compte" icon="mail" type="email" value={email} onChange={setEmail} placeholder="contact@plomberie-bertrand.fr" disabled={busy} />
           <div className="space-y-2.5">
             <label className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Mot de passe extranet</label>

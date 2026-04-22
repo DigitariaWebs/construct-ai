@@ -714,7 +714,7 @@ export default function QuotePage() {
                 <span className="ml-auto text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">Prix catalogue public</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {['CDO', 'Pim Plastic', 'Richardson', 'Marplin'].map(v => {
+                {['CEDEO', 'Pum Plastique', 'Richardson', 'Marplin'].map(v => {
                   const isActive = currentSupplier.name === v || currentSupplier.name === 'IA Optimisé'
                   return (
                     <div key={v} className={`px-3 py-2 rounded-lg border text-xs font-mono flex items-center gap-2 transition-colors ${isActive ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-surface-container border-white/5 text-on-surface-variant'}`}>
