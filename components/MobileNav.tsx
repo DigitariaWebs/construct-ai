@@ -5,9 +5,9 @@ import { usePathname } from 'next/navigation'
 
 const links = [
   { href: '/dashboard',  icon: 'dashboard',     label: 'Accueil'    },
-  { href: '/projects',   icon: 'description',   label: 'Devis'      },
+  { href: '/projects',   icon: 'description',   label: 'Chiffrage'      },
   { href: '/processing', icon: 'upload_file',   label: 'Analyser'   },
-  { href: '/quote',      icon: 'request_quote', label: 'Devis actif' },
+  { href: '/quote',      icon: 'request_quote', label: 'Chiffrage actif' },
   { href: '/settings',   icon: 'settings',      label: 'Paramètres' },
 ] as const
 

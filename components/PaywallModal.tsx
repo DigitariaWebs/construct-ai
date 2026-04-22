@@ -15,11 +15,11 @@ export default function PaywallModal({ onClose, onSubscribed, reason = 'trial-us
   const [processing, setProcessing] = useState(false)
 
   const headline = reason === 'trial-used'
-    ? 'Votre devis gratuit est utilisé'
-    : 'Débloquez les devis illimités'
+    ? 'Votre chiffrage gratuit est utilisé'
+    : 'Débloquez les chiffrage illimités'
 
   const subline = reason === 'trial-used'
-    ? 'Passez à un plan payant pour continuer à générer des devis depuis vos CCTP.'
+    ? 'Passez à un plan payant pour continuer à générer des chiffrage depuis vos CCTP.'
     : 'Comparez nos plans et choisissez celui qui correspond à votre activité.'
 
   const subscribe = () => {

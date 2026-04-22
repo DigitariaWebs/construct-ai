@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 
-// Professional French devis (plumbing/construction) — white background,
+// Professional French chiffrage (plumbing/construction) — white background,
 // B&W text, single accent color, grouped by lot, ready to print.
 
 export type PdfRow = {
@@ -126,13 +126,13 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   setText(doc, C.muted)
-  doc.text('Plomberie · Chauffage · VMC · Devis conforme CCTP', margin, y + 12)
+  doc.text('Plomberie · Chauffage · VMC · Chiffrage conforme CCTP', margin, y + 12)
 
-  // Devis meta — right aligned
+  // Chiffrage meta — right aligned
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(13)
   setText(doc, C.ink)
-  doc.text(`DEVIS N° ${devisNumber}`, W - margin, y, { align: 'right' })
+  doc.text(`CHIFFRAGE N° ${devisNumber}`, W - margin, y, { align: 'right' })
 
   const today = new Date()
   const validUntil = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
@@ -221,7 +221,7 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
   doc.line(margin, y, W - margin, y)
   y += 16
 
-  // ── Items table — 7-column layout required for a devis conforme ───────────
+  // ── Items table — 7-column layout required for a chiffrage conforme ───────────
   // Qté | Désignation | Unité | P.U. HT | TVA | Montant HT | Montant TTC.
   // The CCTP reference is tucked under the designation in small grey text
   // (traceability preserved, one less column).
@@ -277,7 +277,7 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     setText(doc, C.muted)
-    doc.text(`DEVIS ${devisNumber}  —  ${project.name}`, margin, y + 2)
+    doc.text(`CHIFFRAGE ${devisNumber}  —  ${project.name}`, margin, y + 2)
     y += 18
     drawTableHeader()
   }
@@ -438,7 +438,7 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
   if (y + 220 > H - 40) newPage()
 
   // Taux horaire MOE — computed from labour rows so the conditions block
-  // can state it plainly (standard on a conforme devis).
+  // can state it plainly (standard on a conforme chiffrage).
   const moeRows = rows.filter(r => r.category === "MAIN D'ŒUVRE" && r.qtyUnit === 'h')
   const moeHours = moeRows.reduce((s, r) => s + r.qtyNum, 0)
   const moeCost  = moeRows.reduce((s, r) => s + r.qtyNum * r.unitNum, 0)
@@ -457,11 +457,11 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
   doc.setFontSize(8)
   setText(doc, C.text)
   const cond = [
-    '• Acompte 30 % à la signature du devis, solde à la livraison.',
+    '• Acompte 30 % à la signature du chiffrage, solde à la livraison.',
     '• Règlement par virement bancaire sous 30 jours après facturation.',
     '• Pénalités de retard : taux BCE + 10 points. Indemnité forfaitaire de recouvrement : 40 €.',
     '• Pas d\u2019escompte pour paiement anticipé.',
-    '• Devis valable 30 jours à compter de la date d\u2019émission.',
+    '• Chiffrage valable 30 jours à compter de la date d\u2019émission.',
     '• Délai d\u2019exécution : à préciser après signature — usuellement 4 à 8 semaines selon approvisionnement.',
     moeRate > 0
       ? `• Taux horaire main d\u2019œuvre : ${fmtEur(moeRate)} HT  ·  ${moeHours.toLocaleString('fr-FR')} h au total.`
@@ -508,6 +508,6 @@ export function generateQuotePdf(options: PdfQuoteOptions) {
   }
 
   // ── Save ────────────────────────────────────────────────────────────────────
-  const safeName = project.name.replace(/[^\w\- ]+/g, '').replace(/\s+/g, '_').slice(0, 40) || 'devis'
+  const safeName = project.name.replace(/[^\w\- ]+/g, '').replace(/\s+/g, '_').slice(0, 40) || 'chiffrage'
   doc.save(`${devisNumber}_${safeName}.pdf`)
 }

@@ -202,12 +202,12 @@ export default function DashboardPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-on-surface">
                   {trialUsed
-                    ? 'Votre devis gratuit est utilisé.'
-                    : `Il vous reste ${trialLeft} devis gratuit${trialLeft > 1 ? 's' : ''}.`}
+                    ? 'Votre chiffrage gratuit est utilisé.'
+                    : `Il vous reste ${trialLeft} chiffrage gratuit${trialLeft > 1 ? 's' : ''}.`}
                 </p>
                 <p className="text-xs text-on-surface-variant mt-0.5">
                   {trialUsed
-                    ? 'Passez à un plan payant pour générer de nouveaux devis.'
+                    ? 'Passez à un plan payant pour générer de nouveaux chiffrage.'
                     : 'Essayez l\u2019estimateur — sans carte de crédit requise.'}
                 </p>
               </div>

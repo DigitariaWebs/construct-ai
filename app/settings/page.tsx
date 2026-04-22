@@ -367,8 +367,8 @@ export default function SettingsPage() {
                           <h2 className="font-headline font-black text-3xl text-on-surface">Plan d&rsquo;essai gratuit</h2>
                           <p className="text-sm text-on-surface-variant mt-1">
                             {trialLeft > 0
-                              ? `Il vous reste ${trialLeft} devis gratuit${trialLeft > 1 ? 's' : ''}.`
-                              : 'Votre devis gratuit est utilisé — passez à un plan payant pour continuer.'}
+                              ? `Il vous reste ${trialLeft} chiffrage gratuit${trialLeft > 1 ? 's' : ''}.`
+                              : 'Votre chiffrage gratuit est utilisé — passez à un plan payant pour continuer.'}
                           </p>
                         </div>
                         <div className="text-right">
@@ -377,7 +377,7 @@ export default function SettingsPage() {
                         </div>
                       </div>
                       <ul className="space-y-3 mb-6">
-                        {['1 devis gratuit', 'Analyse CCTP automatique', 'Export PDF'].map(f => (
+                        {['1 chiffrage gratuit', 'Analyse CCTP automatique', 'Export PDF'].map(f => (
                           <li key={f} className="flex items-center gap-2 text-sm text-on-surface-variant">
                             <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>{f}
                           </li>
@@ -413,7 +413,7 @@ export default function SettingsPage() {
                         </div>
                       </div>
                       <ul className="space-y-3 mb-6">
-                        {(activePaid?.features ?? ['Devis illimités']).map(f => (
+                        {(activePaid?.features ?? ['Chiffrage illimités']).map(f => (
                           <li key={f} className="flex items-center gap-2 text-sm text-on-surface-variant">
                             <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>{f}
                           </li>
@@ -621,7 +621,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="bg-surface-container-low rounded-2xl border border-red-500/20 p-8">
                   <h3 className="font-headline font-bold text-lg text-red-400 mb-1">Zone dangereuse</h3>
-                  <p className="text-sm text-on-surface-variant mb-5">La suppression de votre compte est irréversible. Tous vos devis seront définitivement perdus.</p>
+                  <p className="text-sm text-on-surface-variant mb-5">La suppression de votre compte est irréversible. Tous vos chiffrage seront définitivement perdus.</p>
                   <button onClick={() => setToast({ message: 'Contactez le support pour supprimer votre compte.', type: 'info' })} className="px-6 py-3 border border-red-500/30 text-red-400 font-bold rounded-xl hover:bg-red-500/10 transition-all text-sm">Supprimer mon compte</button>
                 </div>
               </div>
@@ -635,11 +635,11 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-0 divide-y divide-white/5">
                   {[
-                    { key: 'devisGenere',    label: 'Devis généré avec succès',               desc: 'Reçu à chaque nouveau devis créé.'              },
+                    { key: 'devisGenere',    label: 'Chiffrage généré avec succès',               desc: 'Reçu à chaque nouveau chiffrage créé.'              },
                     { key: 'erreurAnalyse',  label: "Erreur lors de l'analyse",               desc: "Si l'IA ne parvient pas à lire votre CCTP."     },
                     { key: 'renouvellement', label: "Rappel de renouvellement d'abonnement",  desc: "14 jours avant l'expiration."                   },
                     { key: 'nouvelles',      label: 'Nouvelles fonctionnalités',              desc: 'Mises à jour et nouvelles versions.'             },
-                    { key: 'conseils',       label: 'Conseils et bonnes pratiques',           desc: 'Astuces pour optimiser vos devis.'              },
+                    { key: 'conseils',       label: 'Conseils et bonnes pratiques',           desc: 'Astuces pour optimiser vos chiffrage.'              },
                   ].map(item => (
                     <div key={item.key} className="flex items-center justify-between gap-4 py-5">
                       <div><div className="text-sm font-semibold text-on-surface">{item.label}</div><div className="text-xs text-on-surface-variant mt-0.5">{item.desc}</div></div>

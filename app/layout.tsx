@@ -16,9 +16,9 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Plombia Chiffrage — CCTP → devis en quelques minutes',
+  title: 'Plombia Chiffrage — CCTP → chiffrage en quelques minutes',
   description:
-    'Déposez votre CCTP, recevez un devis conforme, poste par poste. Plus de nuits blanches sur les métrés.',
+    'Déposez votre CCTP, recevez un chiffrage conforme, poste par poste. Plus de nuits blanches sur les métrés.',
 }
 
 export default function RootLayout({

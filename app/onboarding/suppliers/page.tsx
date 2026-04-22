@@ -78,7 +78,7 @@ export default function SupplierOnboardingPage() {
 
             <Animate variant="fade-up" delay={250}>
               <p className="text-on-surface-variant text-lg leading-relaxed max-w-xl mb-8">
-                Connectez vos comptes distributeurs pour que vos <span className="text-white font-semibold">tarifs remisés</span> s'appliquent automatiquement à chaque devis. Aucun prix public sur vos chantiers.
+                Connectez vos comptes distributeurs pour que vos <span className="text-white font-semibold">tarifs remisés</span> s'appliquent automatiquement à chaque chiffrage. Aucun prix public sur vos chantiers.
               </p>
             </Animate>
 

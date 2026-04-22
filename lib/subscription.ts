@@ -113,7 +113,7 @@ export const PAID_PLANS: {
     per: '/ mois',
     tag: 'Pour les indépendants',
     features: [
-      'Devis illimités',
+      'Chiffrage illimités',
       '4 fournisseurs inclus',
       'Export PDF',
       'Analyse CCTP automatique',
@@ -136,7 +136,7 @@ export const PAID_PLANS: {
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 'Sur devis',
+    price: 'Sur chiffrage',
     per: '',
     tag: 'Organisations',
     features: [

@@ -28,9 +28,9 @@ const STATS_CONFIG = [
 ] as const
 
 const ACTIVITY = [
-  { time: 'Il y a 2 h',    icon: 'description',   text: 'Devis',                    highlight: 'PRJ-992-DELTA', meta: 'généré depuis CCTP' },
+  { time: 'Il y a 2 h',    icon: 'description',   text: 'Chiffrage',                    highlight: 'PRJ-992-DELTA', meta: 'généré depuis CCTP' },
   { time: 'Il y a 5 h',    icon: 'upload_file',   text: 'CCTP',                     highlight: 'Skyline Pavilion v3', meta: 'analysé (26 lots)' },
-  { time: 'Hier',          icon: 'check_circle',  text: 'Devis validé par',         highlight: 'A. Vance',      meta: 'PRJ-988-ALPHA' },
+  { time: 'Hier',          icon: 'check_circle',  text: 'Chiffrage validé par',         highlight: 'A. Vance',      meta: 'PRJ-988-ALPHA' },
   { time: 'Il y a 3 j',    icon: 'edit',          text: 'Profil société mis à jour', highlight: '',              meta: 'logo ajouté' },
   { time: 'Il y a 5 j',    icon: 'credit_card',   text: 'Facture',                  highlight: '450,00 €',      meta: 'payée — Plan Pro' },
 ]

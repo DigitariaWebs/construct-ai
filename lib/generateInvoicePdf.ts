@@ -31,7 +31,7 @@ export type PdfInvoiceOptions = {
   invoiceNumber: string
   /** Issue date — defaults to now. */
   issuedAt?: Date
-  /** Related devis reference shown in the description block. */
+  /** Related chiffrage reference shown in the description block. */
   devisNumber?: string
   /** Line description: name + lot of the chiffrage mission. */
   mission: {
@@ -83,8 +83,8 @@ const DEFAULT_LABELS_FR: PdfInvoiceLabels = {
   attention: 'À l\u2019attention de',
   designation: 'DÉSIGNATION',
   amountHT: 'MONTANT HT',
-  lineLabel: 'Prestation de chiffrage — devis CCTP',
-  devisRef: 'Réf. devis',
+  lineLabel: 'Prestation de chiffrage — chiffrage CCTP',
+  devisRef: 'Réf. chiffrage',
   totalHT: 'Total HT',
   vat: 'TVA',
   totalTTC: 'Total TTC',

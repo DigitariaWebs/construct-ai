@@ -151,7 +151,7 @@ function GridView({ accounts, entryCounts, connectedCount, onSelect, onDisconnec
   return (
     <div className="p-8 space-y-6">
       <p className="text-sm text-on-surface-variant leading-relaxed max-w-xl">
-        Connectez vos comptes distributeurs pour que vos tarifs personnels remplacent automatiquement les prix publics dans chaque devis.
+        Connectez vos comptes distributeurs pour que vos tarifs personnels remplacent automatiquement les prix publics dans chaque chiffrage.
       </p>
 
       <div className="flex items-center gap-4 px-5 py-3 rounded-xl bg-surface-container-low border border-white/5">
@@ -538,7 +538,7 @@ function DiscountTab({ supplierId, supplierName, account, onDone }: {
           {supplierName} — remises appliquées
         </h3>
         <p className="text-sm text-on-surface-variant max-w-md mx-auto mb-6">
-          Vos remises par famille seront appliquées automatiquement sur tous vos devis.
+          Vos remises par famille seront appliquées automatiquement sur tous vos chiffrage.
         </p>
         <div className="max-w-lg mx-auto mb-6 grid grid-cols-3 gap-2">
           {FAMILIES.map(f => (

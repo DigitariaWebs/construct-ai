@@ -342,7 +342,7 @@ export default function QuotePage() {
 
   const startEdit  = () => { setDraft(rows.map(r => ({ ...r }))); setIsEditing(true) }
   const cancelEdit = () => { setDraft(rows.map(r => ({ ...r }))); setIsEditing(false) }
-  const saveEdit   = () => { setRows(draft.map(r => ({ ...r }))); setIsEditing(false); setToast({ message: 'Devis mis à jour.', type: 'success' }) }
+  const saveEdit   = () => { setRows(draft.map(r => ({ ...r }))); setIsEditing(false); setToast({ message: 'Chiffrage mis à jour.', type: 'success' }) }
 
   const updateDraft = (idx: number, field: 'qtyNum' | 'unitNum', raw: string) => {
     const val = parseFloat(raw.replace(/[^0-9.]/g, '')) || 0
@@ -365,7 +365,7 @@ export default function QuotePage() {
             unitNum: r.unitNum,
           })),
           project: {
-            name:    extracted?.projectName || 'Devis plomberie',
+            name:    extracted?.projectName || 'Chiffrage plomberie',
             lot:     extracted?.lot         || 'Lot 09 — Plomberie · Chauffage · VMC',
             client:  extracted?.client      || undefined,
             summary: extracted?.summary     || undefined,
@@ -396,7 +396,7 @@ export default function QuotePage() {
   const handleApprove = () => {
     setShowApprove(false)
     setApproved(true)
-    setToast({ message: 'Devis approuvé.', type: 'success' })
+    setToast({ message: 'Chiffrage approuvé.', type: 'success' })
   }
 
   const displayRows       = isEditing ? draft : rows
@@ -434,7 +434,7 @@ export default function QuotePage() {
                 )}
               </div>
               <h1 className="text-4xl md:text-5xl font-headline font-extrabold tracking-tighter text-on-surface">
-                {extracted?.projectName || (<>Votre devis <span className="text-primary-container">#PRJ-829</span></>)}
+                {extracted?.projectName || (<>Votre chiffrage <span className="text-primary-container">#PRJ-829</span></>)}
               </h1>
               <p className="mt-2 text-on-surface-variant max-w-xl text-base leading-relaxed">
                 {extracted?.summary || t.quote.extractedFallback}
@@ -542,8 +542,8 @@ export default function QuotePage() {
             <Animate variant="fade-up" as="section" className={`rounded-2xl overflow-hidden border transition-all duration-300 ${isEditing ? 'border-amber-500/25 bg-surface-container-low shadow-[0_0_0_1px_rgba(245,158,11,0.15)]' : 'bg-surface-container-low border-white/5'}`}>
               <div className="p-6 border-b border-white/5 flex justify-between items-center bg-surface-container">
                 <div>
-                  <h3 className="font-headline font-bold text-lg tracking-tight">Postes du devis</h3>
-                  <p className="text-xs text-on-surface-variant mt-0.5">{isEditing ? 'Cliquez sur une quantité ou un prix pour modifier' : `Prix catalogue ${currentSupplier.name} · Devis conforme poste par poste`}</p>
+                  <h3 className="font-headline font-bold text-lg tracking-tight">Postes du chiffrage</h3>
+                  <p className="text-xs text-on-surface-variant mt-0.5">{isEditing ? 'Cliquez sur une quantité ou un prix pour modifier' : `Prix catalogue ${currentSupplier.name} · Chiffrage conforme poste par poste`}</p>
                 </div>
                 <span className={`text-[10px] font-mono uppercase tracking-widest flex items-center gap-1.5 ${isEditing ? 'text-amber-400' : 'text-emerald-400'}`}>
                   <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isEditing ? 'bg-amber-400' : 'bg-emerald-400'}`} />
@@ -749,7 +749,7 @@ export default function QuotePage() {
                 {approved ? (
                   <div className="w-full py-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-headline font-bold text-base rounded-2xl flex items-center justify-center gap-2">
                     <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                    Devis approuvé
+                    Chiffrage approuvé
                   </div>
                 ) : (
                   <button disabled={isEditing} onClick={() => setShowApprove(true)} className="w-full py-4 bg-primary-container text-on-primary-container font-headline font-bold text-base rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-primary-container/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100">
@@ -769,7 +769,7 @@ export default function QuotePage() {
 
             <div className="bg-surface-container rounded-2xl p-6 border border-white/5">
               <div className="flex justify-between items-center mb-4">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-outline">Conformité devis</h4>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-outline">Conformité chiffrage</h4>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">✓ CONFORME</span>
               </div>
               <div className="space-y-3">
@@ -849,7 +849,7 @@ export default function QuotePage() {
             <div className="bg-surface-container-lowest rounded-2xl p-6 border border-white/5 space-y-5">
               <h4 className="text-xs font-bold uppercase tracking-widest text-outline">Calendrier de commande</h4>
               {[
-                { dot: 'bg-primary',     title: 'Devis approuvé',         sub: 'Jour 0',     done: approved },
+                { dot: 'bg-primary',     title: 'Chiffrage approuvé',         sub: 'Jour 0',     done: approved },
                 { dot: 'bg-secondary',   title: 'Fournisseur confirmé',   sub: '+ 24h',      done: false    },
                 { dot: 'bg-tertiary',    title: 'Matériaux expédiés',     sub: '+ 72h',      done: false    },
                 { dot: 'bg-emerald-500', title: 'Livraison sur chantier', sub: '+ 5 jours',  done: false    },
