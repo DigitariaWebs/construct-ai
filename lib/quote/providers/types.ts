@@ -1,6 +1,6 @@
 import type { ExtractedQuote, ExtractedToc } from '../types'
 
-export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'mock'
+export type ProviderId = 'openai' | 'anthropic' | 'gemini'
 
 export type ProviderError =
   | { code: 'missing_key';  message: string }
@@ -29,5 +29,5 @@ export type ExtractProvider = (file: File, opts?: ExtractOptions) => Promise<Pro
 export type TocProvider = (file: File, opts?: { model?: string }) => Promise<TocResult>
 
 export function isProviderId(v: string | null | undefined): v is ProviderId {
-  return v === 'openai' || v === 'anthropic' || v === 'gemini' || v === 'mock'
+  return v === 'openai' || v === 'anthropic' || v === 'gemini'
 }

@@ -20,21 +20,18 @@ import { validateQuote } from './validate'
 import { extractWithOpenAI, detectTocWithOpenAI } from './providers/openai'
 import { extractWithAnthropic, detectTocWithAnthropic } from './providers/anthropic'
 import { extractWithGemini, detectTocWithGemini } from './providers/gemini'
-import { extractWithMock, detectTocWithMock } from './providers/mock'
 import type { ExtractProvider, TocProvider } from './providers/types'
 
 const EXTRACTORS: Record<ProviderId, ExtractProvider> = {
   openai:    extractWithOpenAI,
   anthropic: extractWithAnthropic,
   gemini:    extractWithGemini,
-  mock:      extractWithMock,
 }
 
 const TOC_DETECTORS: Record<ProviderId, TocProvider> = {
   openai:    detectTocWithOpenAI,
   anthropic: detectTocWithAnthropic,
   gemini:    detectTocWithGemini,
-  mock:      detectTocWithMock,
 }
 
 // Below this size we assume the CCTP is small enough that a single-shot

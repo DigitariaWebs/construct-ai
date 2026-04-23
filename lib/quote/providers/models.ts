@@ -29,16 +29,12 @@ export const MODEL_CATALOG: Record<ProviderId, ModelInfo[]> = {
     { id: 'gemini-2.5-pro',   label: 'Gemini 2.5 Pro',   tier: 'max',      note: 'Large context · best quality' },
     { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', tier: 'fast',     note: 'Fastest · cheapest' },
   ],
-  mock: [
-    { id: 'demo', label: 'Démo', tier: 'balanced', note: 'Deterministic fake · no API key needed' },
-  ],
 }
 
 export const DEFAULT_MODEL: Record<ProviderId, string> = {
   anthropic: 'claude-opus-4-7',
   openai:    'gpt-4o',
   gemini:    'gemini-2.5-pro',
-  mock:      'demo',
 }
 
 export function isValidModel(provider: ProviderId, model: string): boolean {

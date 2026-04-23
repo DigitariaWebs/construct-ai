@@ -12,8 +12,8 @@ function pickProvider(req: NextRequest, form: FormData): ProviderId {
   const fromEnv    = process.env.EXTRACTION_PROVIDER
 
   const formValue = typeof fromForm === 'string' ? fromForm : null
-  const candidate = fromQuery ?? fromHeader ?? formValue ?? fromEnv ?? 'mock'
-  return isProviderId(candidate) ? candidate : 'mock'
+  const candidate = fromQuery ?? fromHeader ?? formValue ?? fromEnv ?? 'openai'
+  return isProviderId(candidate) ? candidate : 'openai'
 }
 
 function pickModel(req: NextRequest, form: FormData): string | undefined {

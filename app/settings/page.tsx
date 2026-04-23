@@ -42,14 +42,12 @@ const PROVIDER_META: Record<ProviderId, { label: string; icon: string; sub: stri
   anthropic: { label: 'Anthropic',      icon: 'auto_awesome',  sub: 'Claude 4.x family'        },
   openai:    { label: 'OpenAI',         icon: 'psychology',    sub: 'GPT-4o family'            },
   gemini:    { label: 'Google Gemini',  icon: 'diamond',       sub: 'Gemini 2.5 family'        },
-  mock:      { label: 'Démo',           icon: 'science',       sub: 'Réponse fictive · sans clé' },
 }
 
 type ProviderStatus = {
   openai: boolean
   anthropic: boolean
   gemini: boolean
-  mock: boolean
   envDefault: string | null
 }
 
@@ -505,7 +503,7 @@ export default function SettingsPage() {
                       const meta   = PROVIDER_META[id]
                       const keyed  = aiStatus ? aiStatus[id] : false
                       const active = aiPref?.provider === id
-                      const disabled = aiStatus !== null && !keyed && id !== 'mock'
+                      const disabled = aiStatus !== null && !keyed
                       return (
                         <button
                           key={id}
@@ -526,9 +524,7 @@ export default function SettingsPage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-headline font-bold text-sm text-on-surface truncate">{meta.label}</span>
-                                {id === 'mock' ? (
-                                  <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-white/5 text-on-surface-variant">Démo</span>
-                                ) : aiStatus === null ? null : keyed ? (
+                                {aiStatus === null ? null : keyed ? (
                                   <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">
                                     <span className="w-1 h-1 rounded-full bg-emerald-400" />Prêt
                                   </span>
