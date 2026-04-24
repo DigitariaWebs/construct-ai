@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { runExtractionPipeline } from '@/lib/quote/pipeline'
-import { isProviderId, type ProviderId } from '@/lib/quote/providers/types'
+import { runExtractionPipeline } from '@/server/services/extraction/extractionService'
+import { isProviderId, type ProviderId } from '@/features/quote/providers/types'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300

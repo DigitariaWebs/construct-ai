@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { extractInvoiceWithOpenAI } from '@/lib/catalog/ocr/openai'
+import { extractInvoiceWithOpenAI } from '@/server/services/catalog/ocrService'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300

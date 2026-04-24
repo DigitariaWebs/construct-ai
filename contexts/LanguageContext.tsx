@@ -1,8 +1,8 @@
 'use client';
 import React, { createContext, useContext, useState } from 'react';
-import { en } from '@/lib/i18n/en';
-import type { Translations } from '@/lib/i18n/en';
-import { fr } from '@/lib/i18n/fr';
+import { en } from '@/shared/i18n/en';
+import type { Translations } from '@/shared/i18n/en';
+import { fr } from '@/shared/i18n/fr';
 
 type Locale = 'en' | 'fr';
 
