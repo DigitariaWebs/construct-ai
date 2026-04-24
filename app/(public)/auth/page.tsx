@@ -6,10 +6,8 @@ import Link from 'next/link'
 import { useLanguage } from '@/contexts/LanguageContext'
 import Animate from '@/components/feedback/Animate'
 import Footer from '@/components/navigation/Footer'
-import { initTrial } from '@/features/subscription/store'
 import { formatSiret, isValidSiret, isValidVatFr } from '@/shared/validation/siret'
-import { createSubscriberOrg } from '@/features/auth/orgs'
-import { registerSubscriberOwner } from '@/features/auth/currentUser'
+import { signInWithPassword, signUpWithPassword } from '@/features/auth/api'
 
 type Mode = 'login' | 'signup'
 
@@ -27,43 +25,67 @@ export default function AuthPage() {
   const [address, setAddress] = useState('')
   const [vatIntra, setVatIntra] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const switchMode = (next: Mode) => {
+    setMode(next)
+    setError('')
+    setNotice('')
+  }
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
+    setNotice('')
+
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError(t.auth.errorEmail)
+    if (password.length < 6) return setError(t.auth.errorPassword)
 
     if (mode === 'signup') {
-      if (!fullName.trim())                         return setError(t.auth.errorName)
-      if (!/^\S+@\S+\.\S+$/.test(email))            return setError(t.auth.errorEmail)
-      if (password.length < 6)                      return setError(t.auth.errorPassword)
-      if (password !== confirmPassword)             return setError(t.auth.errorConfirm)
-      if (!companyName.trim())                      return setError(t.auth.errorCompany)
-      if (!isValidSiret(siret))                     return setError(t.auth.errorSiret)
-      if (!address.trim())                          return setError(t.auth.errorAddress)
+      if (!fullName.trim()) return setError(t.auth.errorName)
+      if (password !== confirmPassword) return setError(t.auth.errorConfirm)
+      // SIRET + VAT are optional at signup per the lenient policy — only
+      // format-check when the user actually typed something.
+      if (siret.trim() && !isValidSiret(siret)) return setError(t.auth.errorSiret)
       if (vatIntra.trim() && !isValidVatFr(vatIntra)) return setError(t.auth.errorVat)
     }
 
     setIsSubmitting(true)
-
-    if (mode === 'signup') {
-      const org = createSubscriberOrg({
-        name: companyName,
-        siret,
-        address,
-        vatIntra: vatIntra.trim() || undefined,
-        contactName: fullName,
-        contactEmail: email,
-      })
-      registerSubscriberOwner({ name: fullName, email, orgId: org.id })
-      initTrial()
+    try {
+      if (mode === 'signup') {
+        const { data, error: err } = await signUpWithPassword({
+          email,
+          password,
+          name: fullName.trim() || undefined,
+        })
+        if (err) {
+          setError(err.message)
+          return
+        }
+        // No session means email confirmation is enabled OR the address
+        // was already registered (Supabase deliberately doesn't tell us
+        // which, to avoid leaking which emails exist). Either way, the
+        // honest UX is "go check your inbox" — no redirect.
+        if (!data.session) {
+          setNotice(
+            locale === 'fr'
+              ? `Vérifiez votre boîte mail (${email}) pour confirmer votre compte.`
+              : `Check your inbox (${email}) to confirm your account.`,
+          )
+          return
+        }
+      } else {
+        const { error: err } = await signInWithPassword({ email, password })
+        if (err) {
+          setError(err.message)
+          return
+        }
+      }
+      router.push('/dashboard')
+    } finally {
+      setIsSubmitting(false)
     }
-
-    localStorage.setItem('df_auth_session', 'active')
-    const next = mode === 'signup' ? '/onboarding/suppliers' : '/dashboard'
-    setTimeout(() => {
-      router.push(next)
-    }, 600) // Brief animation delay before redirect
   }
 
   return (
@@ -137,10 +159,7 @@ export default function AuthPage() {
                 <div className="inline-flex rounded-xl border border-outline-variant/30 bg-surface-container/80 p-1.5 backdrop-blur-sm shadow-inner">
                   <button
                     type="button"
-                    onClick={() => {
-                      setMode('login')
-                      setError('')
-                    }}
+                    onClick={() => switchMode('login')}
                     className={`px-6 py-2.5 text-xs font-bold uppercase tracking-[0.15em] rounded-lg transition-all duration-300 ${
                       mode === 'login'
                         ? 'bg-primary-container text-on-primary-container shadow-md'
@@ -151,10 +170,7 @@ export default function AuthPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setMode('signup')
-                      setError('')
-                    }}
+                    onClick={() => switchMode('signup')}
                     className={`px-6 py-2.5 text-xs font-bold uppercase tracking-[0.15em] rounded-lg transition-all duration-300 ${
                       mode === 'signup'
                         ? 'bg-primary-container text-on-primary-container shadow-md'
@@ -349,6 +365,15 @@ export default function AuthPage() {
                     <div className="flex items-center gap-3 p-4 rounded-xl bg-error/10 border border-error/20 text-error text-sm font-bold shadow-inner">
                       <span className="material-symbols-outlined text-[20px]">error</span>
                       {error}
+                    </div>
+                  </Animate>
+                )}
+
+                {notice && (
+                  <Animate variant="fade-in">
+                    <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/10 border border-primary/30 text-primary text-sm font-bold shadow-inner">
+                      <span className="material-symbols-outlined text-[20px]">mark_email_read</span>
+                      {notice}
                     </div>
                   </Animate>
                 )}

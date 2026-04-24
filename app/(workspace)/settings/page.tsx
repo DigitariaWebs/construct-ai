@@ -62,7 +62,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 export default function SettingsPage() {
-  const { t } = useLanguage()
+  const { t, locale, setLocale } = useLanguage()
   const [activeTab, setActiveTab] = useState<Tab>('profil')
   const [toast, setToast]         = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
@@ -213,6 +213,33 @@ export default function SettingsPage() {
                     <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">upload</span>
                     <span className="text-xs text-on-surface-variant">{t.settings.uploadLogo}</span>
                   </button>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Langue / Language</label>
+                  <div className="inline-flex rounded-xl border border-outline-variant/30 bg-surface-container/80 p-1.5 shadow-inner">
+                    <button
+                      type="button"
+                      onClick={() => setLocale('fr')}
+                      className={`px-6 py-2.5 text-xs font-bold uppercase tracking-[0.15em] rounded-lg transition-all duration-300 ${
+                        locale === 'fr'
+                          ? 'bg-primary-container text-on-primary-container shadow-md'
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      Français
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLocale('en')}
+                      className={`px-6 py-2.5 text-xs font-bold uppercase tracking-[0.15em] rounded-lg transition-all duration-300 ${
+                        locale === 'en'
+                          ? 'bg-primary-container text-on-primary-container shadow-md'
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      English
+                    </button>
+                  </div>
                 </div>
                 <div className="flex gap-3 pt-4 border-t border-white/5">
                   <button onClick={handleSave} className="px-6 py-3 bg-primary-container text-on-primary-container font-bold rounded-xl hover:shadow-[0_0_20px_rgba(212,255,58,0.3)] transition-all">{t.settings.saveButton}</button>
